@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "termlint"
+version = "0.1.0"
+description = "Terminology linter for a given subject area text"
+authors = ["Dmitry Uraev, <uraev.dima@yandex.ru>"]
+license = "MIT"
+readme = "README.md"
+keywords = ["nlp", "terminology", "linting", "ontology"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Text Processing",
+]
+packages = [{include = "termlint", from = "src"}]
+
+
+[tool.poetry.dependencies]
+python = ">=3.13"
+click = "^8.3.1"
+pydantic = "^2.12.5"
+
+[tool.poetry.extras]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.2"
+pytest-asyncio = "^1.3.0"
+
+[tool.poetry.scripts]
+termlint = "termlint.cli:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
