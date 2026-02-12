@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Tuple
-from pydantic import BaseModel
+from typing import Any, Dict, List, Tuple
 
 
 @dataclass
@@ -15,13 +14,13 @@ class TextEntity:
     score: float             # candidate rating
 
     # context
-    pos_tags: List[str] = field(default_factory=list)
-    sentence: str = ""
-    frequency: int = 1
+    pos_tags: List[str] = field(default_factory=list)    # POS tags for the term tokens
+    sentence: str = ""                                   # Sentence where the term occurs
+    frequency: int = 1                                   # Frequency of the term in the document
 
     # metadata
-    extractor_type: str = ""
-    properties: Dict[str, Any] = field(default_factory=dict)
+    extractor_type: str = ""                                    # Which extractor produced this entity
+    properties: Dict[str, Any] = field(default_factory=dict)    # Extra features (tf-idf, embedding, etc.)
 
     @property
     def normalized_form(self) -> str:

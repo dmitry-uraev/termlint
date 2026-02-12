@@ -15,7 +15,7 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Text Processing",
 ]
-packages = [{include = "termlint", from = "src"}]
+packages = [{ include = "termlint" }]
 
 
 [tool.poetry.dependencies]

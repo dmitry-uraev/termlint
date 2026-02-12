@@ -1,6 +1,7 @@
 import pytest
 
-from src.termlint.core.models import TextEntity
+from termlint.core.models import TextEntity
+
 
 @pytest.fixture
 async def sample_text_entity():
