@@ -143,6 +143,28 @@ Pipeline propagates → Result.err([...])
 CLI shows errors → Exit code 3
 ```
 
+## Verifier
+
+> Concept
+
+| Компонент          | Назначение                 | Контракт                                                               |
+| ------------------ | -------------------------- | ---------------------------------------------------------------------- |
+| KnowledgeSource    | Протокол источников знаний | get_entity(term: str) → Result[Entity]                                 |
+| JSONGlossarySource | JSON файл глоссария        | glossary.json → Entity[]                                               |
+| SPARQLSource       | Ontology via SPARQL        | SELECT ?term WHERE { ... }                                             |
+| TermMatcher        | Поиск совпадений           | match(entity: TextEntity, source: KnowledgeSource) → List[MatchResult] |
+| CoverageCalculator | Метрики покрытия           | terms: List[TextEntity], matches: List[MatchResult] → CoverageMetrics  |
+
+## Reporter
+
+| Компонент       | Назначение           | Контракт                                    |
+| --------------- | -------------------- | ------------------------------------------- |
+| ReportGenerator | Генератор отчётов    | generate(matches: List[MatchResult]) → Dict |
+| JSONExporter    | Техническая выгрузка | Dict → JSON                                 |
+| HTMLReport      | Человекочитаемый     | Dict → HTML                                 |
+| JUnitExporter   | CI/CD                | Dict → JUnit XML                            |
+| CoverageMetrics | Статистика           | coverage_pct, unknown_terms, quality_score  |
+
 ## Configuration (pyproject.toml)
 
 > Concept
@@ -185,6 +207,15 @@ termlint ci                 # Fail if coverage < 90%
 termlint report docs/ --format html --output report.html
 ```
 
+> Layer concept
+
+| Компонент      | Команда          | Вывод                    |
+| -------------- | ---------------- | ------------------------ |
+| VerifyCommand  | termlint verify  | Coverage + unknown terms |
+| ExtractCommand | termlint extract | Сырые TextEntity[]       |
+| ReportCommand  | termlint report  | HTML/JSON экспорт        |
+| QualityGate    | termlint ci      | Exit code 0/1            |
+
 ## Exit codes
 
 > Concept
@@ -217,3 +248,11 @@ termlint report docs/ --format html --output report.html
 [ ] Plugin System
     └─ Custom extractors via entrypoints
 ```
+
+| Сценарий                | Extraction | Processing | Verification | Ontology | Report |
+| ----------------------- | ---------- | ---------- | ------------ | -------- | ------ |
+| 1. Полный               | ✅         | ✅         | ✅           |          | ✅     |
+| 2. Только извлечение    | ✅         |            |              |          | ✅     |
+| 3. Извлечение+обработка | ✅         | ✅         |              |          | ✅     |
+| 4. До онтологии         | ✅         | ✅         |              | ✅       | ✅     |
+| 5. Из готового          |            |            | ✅           | ✅       | ✅     |
