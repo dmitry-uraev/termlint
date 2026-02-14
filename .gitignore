@@ -1,7 +1,12 @@
 .venv
 .vscode
 
-poetry.lock
+# Poetry
+poetry.toml
 
 __pycache__
 .coverage
+.pytest_cache
+
+# OS
+.DS_Store
