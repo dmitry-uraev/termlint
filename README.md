@@ -18,4 +18,6 @@ TODO
 
 ## Development
 
-TODO
+```bash
+poetry install --with dev --extras "rule"
+```

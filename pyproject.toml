@@ -37,9 +37,9 @@ pytest = "^9.0.2"
 pytest-asyncio = "^1.3.0"
 
 # TODO: Add proper poetry scripts later
-# [tool.poetry.scripts]
-# termlint = "termlint.cli:termlint_cli"
-# termlint-models = "termlint.cli:install_models"
+[tool.poetry.scripts]
+termlint = "termlint.cli:termlint_cli"
+termlint-models = "termlint.cli:install_models"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
