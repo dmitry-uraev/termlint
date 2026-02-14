@@ -27,12 +27,107 @@ Raw Text
 
 ## Core Models & Types (Partly)
 
-| Name             | Purpose                  | Key Fields/Methods                                      | Status |
-| ---------------- | ------------------------ | ------------------------------------------------------- | ------ |
-| TextEntity       | Extracted term candidate | text, original_text, lemma, span, score, extractor_type | Partly |
-| Entity           | Glossary term            | id, label, synonyms, relations                          | TODO   |
-| Result[T]        | Error handling monad     | ok(value), err(errors), map(), bind()                   | +      |
-| TextEntityStream | Async term iterator      | async for, to_list(), from_list()                       | +      |
+| Name              | Purpose                                              | Key Fields/Methods                                      | Location       | Status |
+| ----------------- | ---------------------------------------------------- | ------------------------------------------------------- | -------------- | ------ |
+| TextEntity        | Extracted term candidate                             | text, original_text, lemma, span, score, extractor_type | core/models.py | Partly |
+| Entity            | Glossary term                                        | id, label, synonyms, relations, definition              | core/models.py | TODO   |
+| MatchResult       | Extraction -> Glossary link (TextEntity -> Entity)   | text_entity, entity, confidence, status                 | core/models.py | TODO   |
+| Result[T]         | Error handling monad                                 | ok(value), err(errors), map(), bind()                   | core/types.py  | +      |
+| TextEntityStream  | Async term iterator (provides extraction results)    | async for entity in stream, to_list(), from_list()      | core/types.py  | +      |
+| MatchResultStream | Async match iterator (provides verification results) | async for match in stream, to_list(), from_list()       | core/types.py  | TODO   |
+| CoverageReport    | Final metrics + details                              | coverage_pct, unknown_terms, matches                    | core/types.py  | TODO   |
+
+## Common Layers Principles
+
+### Result Monad Contract (TODO)
+
+Every stage returns Result[TextEntityStream]:
+
+```text
+ExtractionStage.process(TextEntityStream)      →    Result[TextEntityStream]
+VerificationStage.process(TextEntityStream)    →    Result[MatchResultStream]
+ReportStage.process(MatchResultStream)         →    Result[CoverageReport]
+
+pipeline.run(text) → Result[FinalOutput]    # type depends on the last stages
+```
+
+Errors propagate automatically:
+
+```python
+result = await stage.process(stream)
+if not result.is_ok:
+    return result  # Pipeline stops here
+```
+
+### Fluent Pipeline API (TODO)
+
+> Concept: Unified Processing Graph (extends extraction layer)
+
+```python
+from termlint import pipeline
+
+# Extended pipeline: Extraction → Verification → Report
+result = await (pipeline()
+    .extractors(rule_extractor, cvalue_extractor)
+    .normalize()
+    .filter(min_score=0.2)
+    .verify(glossary="glossary.json")      # verification layer stages
+    .report()                              # reporter layer stage
+    .run_and_collect(text))
+
+if result.is_ok:
+    report = result.value  # CoverageMetrics + MatchResult[]
+```
+
+### Stage Implementation Strategy (TODO)
+
+core/stages.py
+
+Abstract pipeline stage
+
+```python
+# core/stages.py
+class ProcessingStage(ABC, Generic[TInput, TOutput]):
+    async def process(self, input: TInput) -> Result[TOutput]: ...
+```
+
+extraction/stages/normalization.py
+
+```python
+class NormalizationStage(ProcessingStage[TextEntityStream, TextEntityStream]): ...
+```
+
+### Directory Layout (TODO)
+
+> TODO: Unify
+
+```text
+termlint/
+├── core/
+│   ├── types.py             # Entity, MatchResult
+│   └── stages.py            # ProcessingStage[Input, Output]
+├── extraction/
+│   └── stages/              # ExtractionStage → ProcessingStage
+├── verifier/
+│   └── stages/              # VerificationStage → ProcessingStage
+├── reporter/
+│   └── stages/              # ReportStage → ProcessingStage
+└── pipeline.py              # UnifiedPipeline
+```
+
+### Error Handling Flow (Partly)
+
+> Concept
+
+```text
+Extractor fails → Result.err(["Extractor 'RuleExtractor': ValueError..."])
+                ↓
+ParallelStage catches → Result.err([...])
+                ↓
+Pipeline propagates → Result.err([...])
+                ↓
+CLI shows errors → Exit code 3
+```
 
 ## Extraction Layer (Partly)
 
@@ -97,69 +192,51 @@ Ideas for keywords extraction:
 - https://github.com/MaartenGr/KeyBERT
 - https://huggingface.co/ilsilfverskiold/tech-keywords-extractor
 
-### Fluent Pipeline API (Partly)
+## Verification Layer (TODO)
 
-> Concept
-
-```python
-from termlint.extraction import pipeline
-
-# Declarative pipeline
-result = await (pipeline()
-    .extractors(rule_extractor, cvalue_extractor)
-    .normalize()
-    .filter(min_score=0.2)
-    .run_and_collect(text))
-
-if result.is_ok:
-    terms = result.value  # List[TextEntity]
-else:
-    errors = result.errors
-```
-
-### Result Monad Contract (Done)
-
-Every stage returns Result[TextEntityStream]:
-
-```text
-ParallelStage.extract(text) → Result[TextEntityStream]
-ExtractionStage.process(stream) → Result[TextEntityStream]
-TextExtractionPipeline.run(text) → Result[TextEntityStream]
-```
-
-Errors propagate automatically:
-
-```python
-result = await stage.process(stream)
-if not result.is_ok:
-    return result  # Pipeline stops here
-```
-
-### Error Handling Flow (Partly)
+### Architecture (TODO)
 
 > Concept
 
 ```text
-Extractor fails → Result.err(["Extractor 'RuleExtractor': ValueError..."])
-                ↓
-ParallelStage catches → Result.err([...])
-                ↓
-Pipeline propagates → Result.err([...])
-                ↓
-CLI shows errors → Exit code 3
+Clean TextEntityStream ───┐
+                          ├─── KnowledgeSource ───┐
+                          │   (JSONGlossary, SPARQL)  │
+                          └─── TermMatcher ───────┼───▶ List[MatchResult]
+                                                      │
+                                                      ▼
+                                               CoverageMetrics + Report
 ```
 
-## Verifier (TODO)
+Input: TextEntityStream (from Extraction Layer)
+Output: List[MatchResult] + CoverageMetrics
+
+### Directory Layer (TODO)
+
+```text
+verifier/
+├── __init__.py
+├── sources/                # KnowledgeSource implementations (Ontology)
+│   ├── __init__.py
+│   ├── base.py             # KnowledgeSource(Protocol)
+│   ├── json_glossary.py    # JSONGlossarySource
+│   └── sparql.py           # SPARQLSource (TODO)
+├── matcher.py              # TermMatcher (comparison logic)
+└── verifier.py             # BasicVerifier (orchestration)
+```
+
+### Components (TODO)
 
 > Concept
 
-| Компонент          | Назначение                 | Контракт                                                               |
-| ------------------ | -------------------------- | ---------------------------------------------------------------------- |
-| KnowledgeSource    | Протокол источников знаний | get_entity(term: str) → Result[Entity]                                 |
-| JSONGlossarySource | JSON файл глоссария        | glossary.json → Entity[]                                               |
-| SPARQLSource       | Ontology via SPARQL        | SELECT ?term WHERE { ... }                                             |
-| TermMatcher        | Поиск совпадений           | match(entity: TextEntity, source: KnowledgeSource) → List[MatchResult] |
-| CoverageCalculator | Метрики покрытия           | terms: List[TextEntity], matches: List[MatchResult] → CoverageMetrics  |
+| Component          | Location        | Input → Output                       | Contract                                                                                        | Status |
+| ------------------ | --------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- | ------ |
+| KnowledgeSource    | sources/base.py | str → Result[Entity]                 | Abstract knowledge source protocol get_entity(term), get_entities(terms)                        | TODO   |
+| JSONGlossarySource | sources/        | path → Entity[]                      | Loads glossary.json file → in-memory index                                                      | TODO   |
+| SPARQLSource       | sources/        | endpoint → Entity[]                  | SPARQL queries → Entity (ontology via SPARQL)                                                   | TODO   |
+| TermMatcher        | matcher.py      | TextEntityStream → List[MatchResult] | Exact/fuzzy/semantic term matching algorithm match(entity: TextEntity, source: KnowledgeSource) | TODO   |
+| BasicVerifier      | verifier.py     | str + pipeline → List[MatchResult]   | Extraction → Matching → Results                                                                 | TODO   |
+| CoverageCalculator | REPORTER LAYER? | REPORTER LAYER?                      | Coverage metrics terms: List[TextEntity], matches: List[MatchResult] → CoverageMetrics          | TODO   |
 
 ## Reporter (TODO)
 
