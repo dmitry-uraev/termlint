@@ -12,3 +12,7 @@ async def sample_text_entity():
         span=(26, 31),
         score=0.9
     )
+
+@pytest.fixture
+async def sample_text():
+    return "This is a sample text for testing."
