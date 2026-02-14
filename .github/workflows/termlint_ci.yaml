@@ -42,7 +42,7 @@ jobs:
         run: poetry run pytest tests  --cov=termlint --cov-report=xml --cov-report=term
 
       - name: Upload Coverage
-        if: always()
+        if: false # disable for now
         uses: codecov/codecov-action@v4
         with:
           file: coverage.xml
