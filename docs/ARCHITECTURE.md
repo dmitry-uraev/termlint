@@ -1,6 +1,6 @@
 # termlint Architecture
 
-## Overview
+## Overview (Partly)
 
 `termlint` is a terminology linter for projects in different subject areas. It extracts term candidates from text, processes them through an asynchronous pipeline, and verifies them against a glossary or knowledge base.
 
@@ -15,7 +15,7 @@ Raw Text
                           └─▶ Verifier / Ontology / Report (TODO)
 ```
 
-## Design Principles
+## Design Principles (Done)
 
 | Principle               | Description                                 |
 | ----------------------- | ------------------------------------------- |
@@ -25,18 +25,18 @@ Raw Text
 | Composition             | ParallelStage + sequential stages           |
 | Fluent API              | TextExtractionPipeline                      |
 
-## Core Models & Types
+## Core Models & Types (Partly)
 
-| Name             | Purpose                  | Key Fields/Methods                                      |
-| ---------------- | ------------------------ | ------------------------------------------------------- |
-| TextEntity       | Extracted term candidate | text, original_text, lemma, span, score, extractor_type |
-| Entity           | Glossary term            | id, label, synonyms, relations                          |
-| Result[T]        | Error handling monad     | ok(value), err(errors), map(), bind()                   |
-| TextEntityStream | Async term iterator      | async for, to_list(), from_list()                       |
+| Name             | Purpose                  | Key Fields/Methods                                      | Status |
+| ---------------- | ------------------------ | ------------------------------------------------------- | ------ |
+| TextEntity       | Extracted term candidate | text, original_text, lemma, span, score, extractor_type | Partly |
+| Entity           | Glossary term            | id, label, synonyms, relations                          | TODO   |
+| Result[T]        | Error handling monad     | ok(value), err(errors), map(), bind()                   | +      |
+| TextEntityStream | Async term iterator      | async for, to_list(), from_list()                       | +      |
 
-## Extraction Layer
+## Extraction Layer (Partly)
 
-### Architecture
+### Architecture (Done)
 
 > Concept
 
@@ -54,7 +54,7 @@ Text ───┐
                             TextEntityStream (refined)
 ```
 
-### Directory Layout
+### Directory Layout (Done)
 
 ```text
 extraction/
@@ -68,32 +68,36 @@ extraction/
 └── pipeline.py        # TextExtractionPipeline (Fluent API)
 ```
 
-### Components
+### Components (Partly)
 
-| Component              | Location    | Input → Output                              | Contract                                                             |
-| ---------------------- | ----------- | ------------------------------------------- | -------------------------------------------------------------------- |
-| BaseExtractor          | extractors/ | str → AsyncIterator[TextEntity]             | Abstract                                                             |
-| ConfigurableExtractor  | extractors/ | str → AsyncIterator[TextEntity]             | ``**config`` passed to init                                          |
-| RuleExtractor          | extractors/ | str → AsyncIterator[TextEntity]             | spaCy patterns, POS tags (Matcher + model autoloading)               |
-| ParallelStage          | stages/     | str → Result[TextEntityStream]              | Parallel extractor composition, ``asyncio.gather(*extractor(text))`` |
-| ExtractionStage        | stages/     | TextEntityStream → Result[TextEntityStream] | Abstract, Chain of responsibility                                    |
-| NormalizationStage     | stages/     | TextEntityStream → Result[TextEntityStream] | Lowercase, lemmatization                                             |
-| TextExtractionPipeline | pipeline.py | Fluent config → Result[Stream/List]         | Declarative pipeline builder                                         |
+| Component              | Location    | Input → Output                              | Contract                                                             | Status |
+| ---------------------- | ----------- | ------------------------------------------- | -------------------------------------------------------------------- | ------ |
+| BaseExtractor          | extractors/ | str → AsyncIterator[TextEntity]             | Abstract                                                             | +      |
+| ConfigurableExtractor  | extractors/ | str → AsyncIterator[TextEntity]             | ``**config`` passed to init                                          | +      |
+| RuleExtractor          | extractors/ | str → AsyncIterator[TextEntity]             | spaCy patterns, POS tags (Matcher + model autoloading)               | +      |
+| CValueExtractor        | extractors/ | str → AsyncIterator[TextEntity]             | TODO                                                                 | TODO   |
+| KeyBERTExtractor       | extractors/ | str → AsyncIterator[TextEntity]             | TODO                                                                 | TODO   |
+| ParallelStage          | stages/     | str → Result[TextEntityStream]              | Parallel extractor composition, ``asyncio.gather(*extractor(text))`` | +      |
+| ExtractionStage        | stages/     | TextEntityStream → Result[TextEntityStream] | Abstract, Chain of responsibility                                    | +      |
+| NormalizationStage     | stages/     | TextEntityStream → Result[TextEntityStream] | Lowercase, lemmatization                                             | +      |
+| FilterStage            | stages/     | TextEntityStream → Result[TextEntityStream] | TODO                                                                 | TODO   |
+| RankStage              | stages/     | TextEntityStream → Result[TextEntityStream] | TODO                                                                 | TODO   |
+| TextExtractionPipeline | pipeline.py | Fluent config → Result[Stream/List]         | Declarative pipeline builder                                         | Partly |
 
-### Extractors
+### Extractors (Partly)
 
-| Extractor        | Algorithm                    | Dependencies          |
-| ---------------- | ---------------------------- | --------------------- |
-| RuleExtractor    | spaCy patterns, POS-tags     | spacy                 |
-| CValueExtractor  | Statistical C-Value/NC-Value | None                  |
-| KeyBERTExtractor | Transformer embeddings       | sentence-transformers |
+| Extractor        | Algorithm                    | Dependencies          | Status |
+| ---------------- | ---------------------------- | --------------------- | ------ |
+| RuleExtractor    | spaCy patterns, POS-tags     | spacy                 | +      |
+| CValueExtractor  | Statistical C-Value/NC-Value | None                  | TODO   |
+| KeyBERTExtractor | Transformer embeddings       | sentence-transformers | TODO   |
 
 Ideas for keywords extraction:
 
 - https://github.com/MaartenGr/KeyBERT
 - https://huggingface.co/ilsilfverskiold/tech-keywords-extractor
 
-### Fluent Pipeline API
+### Fluent Pipeline API (Partly)
 
 > Concept
 
@@ -113,7 +117,7 @@ else:
     errors = result.errors
 ```
 
-### Result Monad Contract
+### Result Monad Contract (Done)
 
 Every stage returns Result[TextEntityStream]:
 
@@ -131,7 +135,7 @@ if not result.is_ok:
     return result  # Pipeline stops here
 ```
 
-### Error Handling Flow
+### Error Handling Flow (Partly)
 
 > Concept
 
@@ -145,7 +149,7 @@ Pipeline propagates → Result.err([...])
 CLI shows errors → Exit code 3
 ```
 
-## Verifier
+## Verifier (TODO)
 
 > Concept
 
@@ -157,7 +161,7 @@ CLI shows errors → Exit code 3
 | TermMatcher        | Поиск совпадений           | match(entity: TextEntity, source: KnowledgeSource) → List[MatchResult] |
 | CoverageCalculator | Метрики покрытия           | terms: List[TextEntity], matches: List[MatchResult] → CoverageMetrics  |
 
-## Reporter
+## Reporter (TODO)
 
 | Компонент       | Назначение           | Контракт                                    |
 | --------------- | -------------------- | ------------------------------------------- |
@@ -167,7 +171,7 @@ CLI shows errors → Exit code 3
 | JUnitExporter   | CI/CD                | Dict → JUnit XML                            |
 | CoverageMetrics | Статистика           | coverage_pct, unknown_terms, quality_score  |
 
-## Configuration (pyproject.toml)
+## Configuration (pyproject.toml) (TODO)
 
 > Concept
 
@@ -191,7 +195,7 @@ term-col = "label"
 synonyms-col = "synonyms"
 ```
 
-## CLI Interface
+## CLI Interface (TODO)
 
 > Concept
 
@@ -218,7 +222,7 @@ termlint report docs/ --format html --output report.html
 | ReportCommand  | termlint report  | HTML/JSON экспорт        |
 | QualityGate    | termlint ci      | Exit code 0/1            |
 
-## Exit codes
+### Exit codes (TODO)
 
 > Concept
 
@@ -251,10 +255,12 @@ termlint report docs/ --format html --output report.html
     └─ Custom extractors via entrypoints
 ```
 
-| Сценарий                | Extraction | Processing | Verification | Ontology | Report |
-| ----------------------- | ---------- | ---------- | ------------ | -------- | ------ |
-| 1. Полный               | ✅          | ✅          | ✅            |          | ✅      |
-| 2. Только извлечение    | ✅          |            |              |          | ✅      |
-| 3. Извлечение+обработка | ✅          | ✅          |              |          | ✅      |
-| 4. До онтологии         | ✅          | ✅          |              | ✅        | ✅      |
-| 5. Из готового          |            |            | ✅            | ✅        | ✅      |
+## Usage scenarios (Partly)
+
+| Сценарий                | Extraction | Processing | Verification | Ontology | Report | Описание                                                                   |
+| ----------------------- | ---------- | ---------- | ------------ | -------- | ------ | -------------------------------------------------------------------------- |
+| 1. Полный               | +          | +          | +            |          | +      | Извлечение, обработка, верификация по существующей онтологии и отчет.      |
+| 2. Только извлечение    | +          |            |              |          | +      | Извлечение и отчет.                                                        |
+| 3. Извлечение+обработка | +          | +          |              |          | +      | Извлечение, обработка и отчет.                                             |
+| 4. До онтологии         | +          | +          |              | +        | +      | Извлечение, обработка, построение онтологии по извлеченным данным и отчет. |
+| 5. Из готового          |            |            | +            | +        | +      | ?                                                                          |
