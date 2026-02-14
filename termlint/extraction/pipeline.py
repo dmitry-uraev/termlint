@@ -3,13 +3,15 @@ Text extraction pipeline implementation
 """
 
 import asyncio
-from typing import AsyncIterator, Callable, List
+from typing import AsyncIterator, List
 
 from termlint.core.models import TextEntity
 from termlint.core.types import Result, TextEntityStream
 from termlint.extraction.stages.base import ExtractionStage
 from termlint.extraction.stages.normalize import NormalizationStage
 from termlint.extraction.stages.parallel import ParallelStage
+from termlint.extraction.extractors.base import BaseExtractor
+from termlint.extraction.extractors.rule import RuleExtractor
 
 
 class TextExtractionPipeline:
@@ -18,22 +20,18 @@ class TextExtractionPipeline:
     """
 
     def __init__(self):
-        self._extractors: List[Callable[[str], AsyncIterator[TextEntity]]] = []
+        self._extractors: List[BaseExtractor] = []
         self._stages: List[ExtractionStage] = []
 
     # ==================== EXTRACTORS ====================
-    def extractors(
-            self,
-            *extractors: Callable[[str], AsyncIterator[TextEntity]]
-        ) -> 'TextExtractionPipeline':
+    def extractors(self, *extractors: BaseExtractor) -> 'TextExtractionPipeline':
         """Add parallel text extractors"""
         self._extractors.extend(extractors)
         return self
 
     def with_rules(self) -> 'TextExtractionPipeline':
         """Add rule-based extractor (TODO)"""
-        # from .extractors.rule import rule_extractor
-        # self._extractors.append(rule_extractor)
+        self._extractors.append(RuleExtractor())
         return self
 
     def with_cvalue(self) -> 'TextExtractionPipeline':
@@ -114,30 +112,8 @@ async def example_main():
     Искусственный интеллект использует глубокое обучение.
     """
 
-    async def mock_rule_extractor(text: str) -> AsyncIterator[TextEntity]:
-        await asyncio.sleep(0.1)  # Simulate processing delay
-        yield TextEntity(
-            text=text[5:22],
-            original_text="Нейронные сети",
-            lemma="нейронные сети",
-            span=(5, 22),
-            score=0.9,
-            extractor_type="rule"
-        )
-
-    async def mock_cvalue_extractor(text: str) -> AsyncIterator[TextEntity]:
-        await asyncio.sleep(0.1)  # Simulate processing delay
-        yield TextEntity(
-            text=text[23:45],
-            original_text="машинного обучения",
-            lemma="машинного обучения",
-            span=(23, 45),
-            score=0.85,
-            extractor_type="cvalue"
-        )
-
     result = await (pipeline()
-                    .extractors(mock_rule_extractor, mock_cvalue_extractor)
+                    .extractors(RuleExtractor(model="ru_core_news_sm"))
                     .normalize()
                     .filter(min_score=0.5)
                     .run_and_collect(text))

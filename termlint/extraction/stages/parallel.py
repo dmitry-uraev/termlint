@@ -2,18 +2,18 @@
 Parallel processing stage for text entity extraction.
 """
 
-
 import asyncio
-from typing import AsyncIterator, Callable, List
+from typing import AsyncIterator, List
 
 from termlint.core.models import TextEntity
 from termlint.core.types import Result, TextEntityStream
+from termlint.extraction.extractors.base import BaseExtractor
 
 
 class ParallelStage:
     """Parallel processing stage for text entity extraction."""
 
-    def __init__(self, extractors: List[Callable[[str], AsyncIterator[TextEntity]]]):
+    def __init__(self, extractors: List[BaseExtractor]):
         self.extractors = extractors
 
     async def extract(self, text: str) -> Result[TextEntityStream]:
@@ -39,40 +39,21 @@ class ParallelStage:
 
         return Result.ok(TextEntityStream(extract_from_results()))
 
-    async def _run_extractor(
-            self, extractor: Callable[[str], AsyncIterator[TextEntity]],
-            text: str
-        ) -> List[TextEntity]:
+    async def _run_extractor(self, extractor: BaseExtractor, text: str) -> List[TextEntity]:
         """Run an extractor and return a list of extracted entities."""
-        iterator = extractor(text)
-        return [entity async for entity in iterator]
+        entities = []
+        async for entity in extractor(text):
+            entities.append(entity)
+        return entities
 
 
 async def example_main():
     """Docstring for example_main"""
     # TODO: add to tests
 
-    async def rule_extractor(text: str) -> AsyncIterator[TextEntity]:
-        await asyncio.sleep(0.1)  # Simulate processing delay
-        yield TextEntity(
-            text=text,
-            original_text=text,
-            lemma=text,
-            span=(0, len(text)),
-            score=0.8
-        )
+    from termlint.extraction.extractors.rule import RuleExtractor
 
-    async def cvalue_extractor(text: str) -> AsyncIterator[TextEntity]:
-        await asyncio.sleep(0.1)  # Simulate processing delay
-        yield TextEntity(
-            text=text,
-            original_text=text,
-            lemma=text,
-            span=(0, len(text)),
-            score=0.7
-        )
-
-    parallel = ParallelStage([rule_extractor, cvalue_extractor])
+    parallel = ParallelStage([RuleExtractor(model="en_core_web_sm")])
     result = await parallel.extract("example text")
 
     if not result.is_ok:

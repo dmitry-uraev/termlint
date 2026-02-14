@@ -12,7 +12,7 @@ Raw Text
         └─▶ TextEntityStream
               └─▶ Extraction stages (Normalize → Filter → Rank)
                     └─▶ Clean TextEntityStream
-                          └─▶ Verifier / Reports (TODO)
+                          └─▶ Verifier / Ontology / Report (TODO)
 ```
 
 ## Design Principles
@@ -58,25 +58,27 @@ Text ───┐
 
 ```text
 extraction/
-├── extractors/        # Text → AsyncIterator[TextEntity]
-│   ├── rule.py
-│   └── cvalue.py
+├── extractors/        # str → AsyncIterator[TextEntity]
+│   ├── base.py        # BaseExtractor + ConfigurableExtractor
+│   └── rule.py        # RuleExtractor (spaCy)
 ├── stages/            # Stream → Result[Stream]
-│   ├── parallel.py    # ParallelStage
+│   ├── parallel.py    # ParallelStage (asyncio.gather)
 │   ├── base.py        # ExtractionStage(ABC)
-│   └── normalize.py
+│   └── normalize.py   # NormalizationStage
 └── pipeline.py        # TextExtractionPipeline (Fluent API)
 ```
 
 ### Components
 
-| Component              | Location    | Input → Output                              | Contract                       |
-| ---------------------- | ----------- | ------------------------------------------- | ------------------------------ |
-| ParallelStage          | stages/     | str → Result[TextEntityStream]              | Parallel extractor composition |
-| ExtractionStage        | stages/     | TextEntityStream → Result[TextEntityStream] | Chain of responsibility        |
-| NormalizationStage     | stages/     | Stream → Result[Stream]                     | Lowercase, lemmatization       |
-| RuleExtractor          | extractors/ | str → AsyncIterator[TextEntity]             | spaCy patterns, POS tags       |
-| TextExtractionPipeline | pipeline.py | Fluent config → Result[Stream/List]         | Declarative pipeline builder   |
+| Component              | Location    | Input → Output                              | Contract                                                             |
+| ---------------------- | ----------- | ------------------------------------------- | -------------------------------------------------------------------- |
+| BaseExtractor          | extractors/ | str → AsyncIterator[TextEntity]             | Abstract                                                             |
+| ConfigurableExtractor  | extractors/ | str → AsyncIterator[TextEntity]             | ``**config`` passed to init                                          |
+| RuleExtractor          | extractors/ | str → AsyncIterator[TextEntity]             | spaCy patterns, POS tags (Matcher + model autoloading)               |
+| ParallelStage          | stages/     | str → Result[TextEntityStream]              | Parallel extractor composition, ``asyncio.gather(*extractor(text))`` |
+| ExtractionStage        | stages/     | TextEntityStream → Result[TextEntityStream] | Abstract, Chain of responsibility                                    |
+| NormalizationStage     | stages/     | TextEntityStream → Result[TextEntityStream] | Lowercase, lemmatization                                             |
+| TextExtractionPipeline | pipeline.py | Fluent config → Result[Stream/List]         | Declarative pipeline builder                                         |
 
 ### Extractors
 
@@ -251,8 +253,8 @@ termlint report docs/ --format html --output report.html
 
 | Сценарий                | Extraction | Processing | Verification | Ontology | Report |
 | ----------------------- | ---------- | ---------- | ------------ | -------- | ------ |
-| 1. Полный               | ✅         | ✅         | ✅           |          | ✅     |
-| 2. Только извлечение    | ✅         |            |              |          | ✅     |
-| 3. Извлечение+обработка | ✅         | ✅         |              |          | ✅     |
-| 4. До онтологии         | ✅         | ✅         |              | ✅       | ✅     |
-| 5. Из готового          |            |            | ✅           | ✅       | ✅     |
+| 1. Полный               | ✅          | ✅          | ✅            |          | ✅      |
+| 2. Только извлечение    | ✅          |            |              |          | ✅      |
+| 3. Извлечение+обработка | ✅          | ✅          |              |          | ✅      |
+| 4. До онтологии         | ✅          | ✅          |              | ✅        | ✅      |
+| 5. Из готового          |            |            | ✅            | ✅        | ✅      |

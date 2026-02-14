@@ -24,4 +24,4 @@ class TextEntity:
 
     @property
     def normalized_form(self) -> str:
-        return self.lemma[0] if hasattr(self, 'lemmas') and self.lemma else self.text.lower()
+        return self.lemma.lower()
