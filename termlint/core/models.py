@@ -1,6 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+from enum import Enum, auto
 
+
+# Extraction Layer -----------------------------------------
 
 @dataclass
 class TextEntity:
@@ -25,3 +28,32 @@ class TextEntity:
     @property
     def normalized_form(self) -> str:
         return self.lemma.lower()
+
+
+# Verification Layer -----------------------------------------
+
+@dataclass(frozen=True)
+class Entity:
+    id:            str                                                   # unique identifier ("glossary:001", "ontology:1234", etc.)
+    label:         str                                                   # "term", "concept", "entity", etc.
+    synonyms:      List[str] = field(default_factory=list)               # list of synonymous names/labels for this entity
+    relations:     Dict[str, List[str]] = field(default_factory=dict)    # relation type -> list of related entity ids
+    definition:    Optional[str] = None                                  # textual definition or description of the entity
+    source:        Optional[str] = None                                  # source of the entity (glossary name, ontology IRI, etc.)
+
+
+class MatchStatus(Enum):
+
+    MATCHED = auto()
+    UNKNOWN = auto()
+    AMBIGUOUS = auto()
+    NEAR_MATCH = auto()
+
+
+@dataclass(frozen=True)
+class MatchResult:
+    text_entity: TextEntity
+    entity: Optional[Entity] = None
+    confidence: float = 0.0
+    status: MatchStatus = MatchStatus.UNKNOWN
+    matched_synonym: Optional[str] = None

@@ -3,7 +3,7 @@ Text extraction pipeline implementation
 """
 
 import asyncio
-from typing import AsyncIterator, List
+from typing import List
 
 from termlint.core.models import TextEntity
 from termlint.core.types import Result, TextEntityStream

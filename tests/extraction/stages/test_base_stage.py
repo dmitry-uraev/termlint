@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock
+"""Unit tests for the base extraction stage implementation"""
 
 from typing import Optional
 
@@ -14,66 +14,79 @@ def sample_stream(sample_text_entity) -> TextEntityStream:
 
 class DummyStage(ExtractionStage):
 
-    def __init__(self, next_stage = None, handle_result: Optional[Result[TextEntityStream]] = None):
-        super().__init__(next_stage)
-        self.input_stream = None
-        self.handle_result = handle_result or Result.ok(TextEntityStream.from_list([]))
+    def __init__(self, handle_result: Optional[Result[TextEntityStream]] = None):
+        self.input_stream = TextEntityStream.from_list([])
+        self.call_count = 0
+        self.handle_result = handle_result
 
     async def _handle(self, stream: TextEntityStream) -> Result[TextEntityStream]:
         self.input_stream = stream
-        return self.handle_result
+        self.call_count += 1
+
+        if self.handle_result:
+            return self.handle_result
+
+        return Result.ok(stream)
 
 
-async def test_base_stage_single_stage_ok(sample_stream) -> None:
+async def test_base_extraction_stage_process_calls_handle(sample_stream) -> None:
     """Test that a single stage processes the stream correctly and returns an ok result"""
     stage = DummyStage()
 
     result = await stage.process(sample_stream)
 
+    assert stage.call_count == 1
+    assert stage.input_stream == sample_stream
     assert result.is_ok
     assert result.value is not None
+
+
+async def test_base_extraction_stage_handle_error_propagation(sample_stream) -> None:
+    """Test that errors from _handle() are propagated correctly"""
+
+    error_msg = "Error in _handle method"
+    stage = DummyStage(handle_result=Result.err([error_msg]))
+
+    result = await stage.process(sample_stream)
+
+    assert not result.is_ok
+    assert result.errors == [error_msg]
     assert stage.input_stream == sample_stream
 
 
-async def test_base_stage_chain_ok_propagation(sample_stream) -> None:
-    """Test that a stage correctly invokes the next stage in the chain when the result is ok"""
-    next_stage = MagicMock(spec=ExtractionStage)
-    next_stage.process = AsyncMock(return_value=Result.ok(TextEntityStream.from_list([])))
+async def test_base_extraction_stage_preserves_ok_result(sample_stream) -> None:
+    """Test that input stream reference is preserved correctly"""
 
-    chain = DummyStage(next_stage=next_stage)
-    result = await chain.process(sample_stream)
+    stage = DummyStage()
+    result = await stage.process(sample_stream)
 
     assert result.is_ok
-    next_stage.process.assert_called_once()
-
-
-async def test_base_stage_chain_error_propagation_stops_chain(sample_stream) -> None:
-    """Test that a stage correctly propagates an error result and does not invoke the next stage in the chain"""
-    error_message = "Error in _handle does not invoke next stage"
-
-    next_stage = MagicMock(spec=ExtractionStage)
-    chain = DummyStage(
-        handle_result=Result.err([error_message]),
-        next_stage=next_stage
-    )
-    result = await chain.process(sample_stream)
-
-    assert not result.is_ok
-    assert result.errors == [error_message]
-    next_stage.process.assert_not_called()
-
-
-async def test_base_stage_last_stage_returns_result(sample_text_entity) -> None:
-    """Test that the last stage in the chain returns the expected result when processing is successful"""
-    expected_stream = TextEntityStream.from_list([sample_text_entity])
-    final_stage = DummyStage(handle_result=Result.ok(expected_stream))
-
-    input_stream = TextEntityStream.from_list([])
-    result = await final_stage.process(input_stream)
-
-    assert result.is_ok
-    assert result.value is not None
-
     entities = await result.value.to_list()
+    assert entities.is_ok
     assert len(entities.value) == 1
-    assert entities.value[0] == sample_text_entity
+
+
+async def test_base_extraction_stage_called_once(sample_stream) -> None:
+    """Test that stage processes input exactly once"""
+    stage = DummyStage()
+
+    result = await stage.process(sample_stream)
+
+    assert stage.call_count == 1
+
+
+async def test_base_extraction_stage_different_inputs(sample_stream) -> None:
+    """Test that stage can handle different input streams"""
+    stage = DummyStage()
+
+    result1 = await stage.process(sample_stream)
+    result2 = await stage.process(TextEntityStream.from_list([]))
+
+    assert stage.call_count == 2
+    assert result1.is_ok and result2.is_ok
+
+    entities1 = await result1.value.to_list()
+    entities2 = await result2.value.to_list()
+
+    assert len(entities1.value) == 1    # first call should return the sample entity
+    assert len(entities2.value) == 0    # second call should return empty stream

@@ -79,7 +79,7 @@ if result.is_ok:
     report = result.value  # CoverageMetrics + MatchResult[]
 ```
 
-### Stage Implementation Strategy (TODO)
+### Stage Implementation Strategy (Partly)
 
 core/stages.py
 
@@ -91,10 +91,16 @@ class ProcessingStage(ABC, Generic[TInput, TOutput]):
     async def process(self, input: TInput) -> Result[TOutput]: ...
 ```
 
+extraction/stages/base.py
+
+```python
+class ExtractionStage(ProcessingStage[TextEntityStream, TextEntityStream], ABC): ...
+```
+
 extraction/stages/normalization.py
 
 ```python
-class NormalizationStage(ProcessingStage[TextEntityStream, TextEntityStream]): ...
+class NormalizationStage(ExtractionStage): ...
 ```
 
 ### Directory Layout (TODO)
