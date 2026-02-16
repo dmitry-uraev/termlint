@@ -1,5 +1,5 @@
 """
-Text extraction pipeline implementation
+DEPRECATED: Text extraction pipeline implementation
 """
 
 import asyncio

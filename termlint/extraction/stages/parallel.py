@@ -6,6 +6,7 @@ import asyncio
 from typing import AsyncIterator, List
 
 from termlint.core.models import TextEntity
+from termlint.core.stages import ProcessingStage
 from termlint.core.types import Result, TextEntityStream
 from termlint.extraction.extractors.base import BaseExtractor
 
@@ -45,6 +46,16 @@ class ParallelStage:
         async for entity in extractor(text):
             entities.append(entity)
         return entities
+
+
+class ParallelExtractionStage(ProcessingStage[str, TextEntityStream]):
+    """Адаптер ParallelStage → ProcessingStage"""
+
+    def __init__(self, extractors: List[BaseExtractor]):
+        self._parallel_stage = ParallelStage(extractors)
+
+    async def process(self, text: str) -> Result[TextEntityStream]:
+        return await self._parallel_stage.extract(text)
 
 
 async def example_main():

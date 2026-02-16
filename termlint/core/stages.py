@@ -10,6 +10,6 @@ TOutput = TypeVar('TOutput')
 class ProcessingStage(ABC, Generic[TInput, TOutput]):
     """Abstract base class for processing stages in the termlint pipeline."""
     @abstractmethod
-    async def process(self, input_data: TInput) -> AsyncIterator[Result[TOutput]]:
+    async def process(self, input_data: TInput) -> Result[TOutput]:
         """Process input -> output asynchronously with streaming results."""
         ...

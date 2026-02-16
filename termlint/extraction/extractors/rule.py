@@ -93,7 +93,7 @@ class RuleExtractor(ConfigurableExtractor):
             yield TextEntity(
                 text=span.text,
                 original_text=span.text,
-                lemma="_".join(token.lemma_ for token in span),
+                lemma=" ".join(token.lemma_ for token in span),
                 span=(start, end),
                 score=self.config.get("min_score", 0.5),  # Default score for rule-based matches
                 pos_tags=[token.pos_ for token in span],
