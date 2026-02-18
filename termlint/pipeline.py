@@ -1,15 +1,20 @@
 """Unified pipeline for termlint stages"""
 import asyncio
-from typing import Any, List
+from typing import List
+from termlint.core.models import MatchResult, TextEntity
 from termlint.core.stages import ProcessingStage
-from termlint.core.types import Result
+from termlint.core.types import MatchResultStream, Result, TextEntityStream
 from termlint.extraction.stages import NormalizationStage
 from termlint.extraction.extractors import RuleExtractor, BaseExtractor
 from termlint.extraction.stages.parallel import ParallelStage
-from termlint.verifier import VerificationStage, KnowledgeSource
+from termlint.verifier import ExactVerificationStage, KnowledgeSource, FuzzyVerificationStage
 from termlint.utils import get_child_logger, timeit
 
 logger= get_child_logger('UnifiedPipeline')
+
+
+StageResultStream = Result[MatchResultStream] | Result[TextEntityStream]
+PipelineResult = Result[List[MatchResult]] | Result[List[TextEntity]]
 
 
 class UnifiedPipeline:
@@ -43,9 +48,13 @@ class UnifiedPipeline:
     #     logger.warning("Filter stage not implemented yet")
     #     return self
 
-    def verify(self, source: KnowledgeSource, min_confidence: float = 0.5) -> 'UnifiedPipeline':
+    def verify(self, verifier: ProcessingStage | KnowledgeSource) -> 'UnifiedPipeline':
         """Adds VerificationStage"""
-        self._stages.append(VerificationStage(source, min_confidence))
+        if isinstance(verifier, KnowledgeSource):
+            stage = ExactVerificationStage(verifier)
+        else:
+            stage = verifier
+        self._stages.append(stage)
         return self
 
     def stage(self, stage: ProcessingStage) -> 'UnifiedPipeline':
@@ -56,7 +65,7 @@ class UnifiedPipeline:
     # ==================== Execute ====================================
 
     @timeit
-    async def run(self, text: str) -> Result[Any]:
+    async def run(self, text: str) -> StageResultStream:
         """Execute pipeline (str -> TextEntityStream | MatchResultStream)"""
         logger.info(f"Running pipeline with {len(self._extractors)} extractors + {len(self._stages)} stages")
 
@@ -80,7 +89,7 @@ class UnifiedPipeline:
         return Result.ok(stream)
 
     @timeit
-    async def run_unified(self, text: str) -> Result[Any]:
+    async def run_unified(self, text: str) -> PipelineResult:
         """TODO: Execute pipeline (single call for extractors + stages)"""
         logger.info(f"Running pipeline with {len(self._stages)} stages")
 
@@ -99,19 +108,17 @@ class UnifiedPipeline:
         logger.info("Pipeline completed successfully")
         return Result.ok(current_data)
 
-    async def run_and_collect(self, text: str) -> Result[List[Any]]:
+    async def run_and_collect(self, text: str) -> PipelineResult:
         """Convenience: gather results into list"""
         result = await self.run(text)
         if not result.is_ok:
             return Result.err(result.errors)
 
-        if result.value and hasattr(result.value, 'to_list()'):
-            collect_result = await result.value.to_list()
-            if not collect_result.is_ok:
-                return Result.err(collect_result.errors)
-            return Result.ok(collect_result.value)
+        collect_result = await result.value.to_list()
+        if not collect_result.is_ok:
+            return Result.err(collect_result.errors)
 
-        return Result.ok([result.value])
+        return Result.ok(collect_result.value)
 
 
 def pipeline() -> UnifiedPipeline:
@@ -122,9 +129,9 @@ def pipeline() -> UnifiedPipeline:
 async def demo():
     from termlint.constants import TESTS_DIR
     from termlint.verifier import JSONGlossarySource
+    from pprint import pprint
 
-    glossary_path = TESTS_DIR / 'fixtures' / 'test_glossary.json'
-    source = JSONGlossarySource(glossary_path)
+    source = JSONGlossarySource(TESTS_DIR / 'fixtures' / 'test_glossary.json')
     await source.initialize()
 
     text = """
@@ -132,19 +139,21 @@ async def demo():
     Искусственный интеллект использует глубокое обучение.
     """
 
+    fuzzy_stage = FuzzyVerificationStage(source)#, threshold=60, limit=3, use_lemma=False)
+
     result = await (pipeline()
         .extractors(RuleExtractor(model='ru_core_news_sm'))
-        .normalize()
-        .verify(source)
+        # .normalize()
+        .verify(fuzzy_stage)
         .run_and_collect(text))
 
     if result.is_ok:
-        print(f"Found {len(result.value)} entities")
-        for entity in result.value:
-            print(f"'{(await entity.to_list()).value}')")
+        stream = result.value
+        for entity in stream:
+            pprint(entity)
         return
     else:
-        print(f"Pipeline failed: {result.errors}")
+        pprint(f"Pipeline failed: {result.errors}")
 
 
 if __name__ == "__main__":

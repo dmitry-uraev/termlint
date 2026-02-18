@@ -6,6 +6,9 @@ import asyncio
 from termlint.core.models import TextEntity
 from termlint.core.types import Result, TextEntityStream
 from termlint.extraction.stages.base import ExtractionStage
+from termlint.utils.logger import get_child_logger
+
+logger = get_child_logger("NormalizationStage")
 
 
 class NormalizationStage(ExtractionStage):
@@ -15,7 +18,8 @@ class NormalizationStage(ExtractionStage):
     async def _handle(self, stream: TextEntityStream) -> Result[TextEntityStream]:
         async def normalize():
             async for entity in stream:
-                yield TextEntity(
+                logger.info(f"Before norm: '{entity.text}' | lemma='{entity.lemma}'")
+                normalized = TextEntity(
                     text=entity.text.lower().strip(),
                     original_text=entity.original_text,
                     lemma=entity.text.lower(),
@@ -27,6 +31,9 @@ class NormalizationStage(ExtractionStage):
                     extractor_type=f"{entity.extractor_type}_normalized",
                     properties=entity.properties
                 )
+                logger.debug(f"After norm: '{normalized.text}' | lemma='{normalized.lemma}'")
+                yield normalized
+
         return Result.ok(TextEntityStream(normalize()))
 
 

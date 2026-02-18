@@ -1,11 +1,9 @@
-import pytest
-
 from termlint.core.models import MatchStatus, TextEntity
-from termlint.verifier.stages.verification import VerificationStage
+from termlint.verifier.stages.exact import ExactVerificationStage
 from termlint.core.types import TextEntityStream
 
 
-class TestVerificationStage:
+class TestExactVerificationStage:
 
     async def test_verification_stage_matched_term(self, initialized_json_glossary, sample_text_entity):
         """Checks exact match"""
@@ -18,7 +16,7 @@ class TestVerificationStage:
         )
         stream = TextEntityStream.from_list([matched_entity])
 
-        stage = VerificationStage(initialized_json_glossary)
+        stage = ExactVerificationStage(initialized_json_glossary)
         result = await stage.process(stream)
 
         assert result.is_ok
@@ -45,7 +43,7 @@ class TestVerificationStage:
         )
         stream = TextEntityStream.from_list([unknown_entity])
 
-        stage = VerificationStage(initialized_json_glossary)
+        stage = ExactVerificationStage(initialized_json_glossary)
         result = await stage.process(stream)
 
         assert result.is_ok
@@ -64,7 +62,7 @@ class TestVerificationStage:
         ]
         stream = TextEntityStream.from_list(entities)
 
-        stage = VerificationStage(initialized_json_glossary)
+        stage = ExactVerificationStage(initialized_json_glossary)
         result = await stage.process(stream)
 
         assert result.is_ok

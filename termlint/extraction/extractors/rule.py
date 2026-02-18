@@ -18,7 +18,7 @@ from termlint.core.models import TextEntity
 from termlint.extraction.extractors.base import ConfigurableExtractor
 from termlint.utils.logger import get_child_logger
 
-logger = get_child_logger("RuleExtractor")
+logger = get_child_logger("RuleExtractor (spaCy)")
 
 
 DEFAULT_MODEL = "en_core_web_sm"
@@ -41,11 +41,12 @@ class RuleExtractor(ConfigurableExtractor):
     - model: spaCy language model to use (default: 'en_core_web_sm')
     """
 
-    def __init__(self,
-                 patterns: Optional[List[List[Dict]]] = DEFAULT_PATTERNS,
-                 model: Optional[str] = DEFAULT_MODEL,
-                 **kwargs
-        ):
+    def __init__(
+        self,
+        patterns: Optional[List[List[Dict]]] = DEFAULT_PATTERNS,
+        model: Optional[str] = DEFAULT_MODEL,
+        **kwargs
+    ):
         if not SPAcy_AVAILABLE:
             raise ImportError("spaCy is required for RuleExtractor. Install: pip install termlint[rule].")
         super().__init__(patterns=patterns, model=model, **kwargs)
@@ -82,6 +83,8 @@ class RuleExtractor(ConfigurableExtractor):
         doc = self.nlp(text)
         matches = self.matcher(doc)
 
+        logger.info(f"Found {len(matches)} term candidates in '{text[:50]}...'")
+
         seen_spans = set()
         for match_id, start, end in matches:
             span_key = (start, end)
@@ -90,7 +93,7 @@ class RuleExtractor(ConfigurableExtractor):
             seen_spans.add(span_key)
 
             span = doc[start:end]
-            yield TextEntity(
+            entity = TextEntity(
                 text=span.text,
                 original_text=span.text,
                 lemma=" ".join(token.lemma_ for token in span),
@@ -105,6 +108,8 @@ class RuleExtractor(ConfigurableExtractor):
                     "token_count": len(span),
                 }
             )
+            logger.debug(f"  Extracted: '{entity.text}' → lemma='{entity.lemma}'")
+            yield entity
 
 
 async def example_main():

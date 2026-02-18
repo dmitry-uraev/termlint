@@ -10,16 +10,16 @@ from termlint.verifier.sources.base import KnowledgeSource
 from termlint.utils.logger import get_child_logger
 
 
-logger = get_child_logger('JSONGlossarySource')
+logger = get_child_logger('GlossarySource (JSON)')
 
 
 class JSONGlossarySource(KnowledgeSource):
     """Knowledge source that loads entities from a JSON glossary file"""
 
     def __init__(self, path: Path | str):
+        super().__init__()  # initialize index
         self.path = Path(path)
         self._entities: List[Entity] = []
-        self._index: Dict[str, List[Entity]] = {}
 
     async def initialize(self) -> Result[None]:
         """Asynchronously load from JSON file (lazy initialization)"""

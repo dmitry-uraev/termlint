@@ -1,5 +1,5 @@
 """
-Verification stage: TextEntityStream -> MatchResultStream
+ExactVerification stage: TextEntityStream -> MatchResultStream
 """
 
 from typing import Dict, List
@@ -11,11 +11,15 @@ from termlint.verifier.sources import KnowledgeSource
 from termlint.utils.logger import get_child_logger
 
 
-logger = get_child_logger(file_path='VerificationStage')
+logger = get_child_logger(file_path='VerificationStage (Exact)')
 
 
-class VerificationStage(ProcessingStage[TextEntityStream, MatchResultStream]):
-    """Matches TextEntity candidates against KnowledgeSource"""
+class ExactVerificationStage(ProcessingStage[TextEntityStream, MatchResultStream]):
+    """
+    Matches TextEntity candidates against KnowledgeSource
+
+    Algorithm: exact matching (term or lemma)
+    """
 
     def __init__(self, source: KnowledgeSource, min_confidence: float = 0.5) -> None:
         self.source = source

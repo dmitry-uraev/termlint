@@ -43,13 +43,14 @@ class ParallelStage:
     async def _run_extractor(self, extractor: BaseExtractor, text: str) -> List[TextEntity]:
         """Run an extractor and return a list of extracted entities."""
         entities = []
-        async for entity in extractor(text):
+        # TODO: pylance, why?
+        async for entity in extractor._extract(text):
             entities.append(entity)
         return entities
 
 
 class ParallelExtractionStage(ProcessingStage[str, TextEntityStream]):
-    """Адаптер ParallelStage → ProcessingStage"""
+    """Adapter ParallelStage → ProcessingStage"""
 
     def __init__(self, extractors: List[BaseExtractor]):
         self._parallel_stage = ParallelStage(extractors)
@@ -64,15 +65,26 @@ async def example_main():
 
     from termlint.extraction.extractors.rule import RuleExtractor
 
-    parallel = ParallelStage([RuleExtractor(model="en_core_web_sm")])
-    result = await parallel.extract("example text")
+    text = """
+    Нейронные сети машинного обучения обрабатывают большие данные.
+    Искусственный интеллект использует глубокое обучение.
+    """
 
-    if not result.is_ok:
-        print(f"Error: {result.errors}")
+    extractor = RuleExtractor(model='ru_core_news_sm')
+    print("direct _extract()")
+    count = 0
+    async for entity in extractor._extract(text):
+        print(f"  {count}. '{entity.text}'")
+        count += 1
+    print(f"_extract(): {count} entities\n")
 
-    stream = result.value
-    entities = await stream.to_list()
-    print(entities.value)
+    # TODO: direct __call__ seems not working
+    print("extractor(text)")
+    count = 0
+    async for entity in extractor(text):
+        print(f"  {count}. '{entity.text}'")
+        count += 1
+    print(f"extractor(text): {count} entities\n")
 
 
 if __name__ == "__main__":

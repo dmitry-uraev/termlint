@@ -11,7 +11,7 @@ from termlint.constants import PROJECT_ROOT
 
 
 def setup_root_logger(
-    level: int = logging.INFO,
+    level: int = logging.DEBUG,
     log_file: Path | None = None,
     fmt: str = "%(asctime)s [%(name)s] %(levelname)-8s %(message)s",
     datefmt: str = "%Y-%m-%d %H:%M:%S",
