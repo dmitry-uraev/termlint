@@ -1737,9 +1737,10 @@ files = [
 name = "rapidfuzz"
 version = "3.14.3"
 description = "rapid fuzzy string matching"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "extra == \"base\""
 files = [
     {file = "rapidfuzz-3.14.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:b9fcd4d751a4fffa17aed1dde41647923c72c74af02459ad1222e3b0022da3a1"},
     {file = "rapidfuzz-3.14.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:4ad73afb688b36864a8d9b7344a9cf6da186c471e5790cbf541a635ee0f457f2"},
@@ -3029,7 +3030,7 @@ files = [
 dev = ["pytest", "setuptools"]
 
 [extras]
-base = ["spacy"]
+base = ["rapidfuzz", "spacy"]
 minimal = []
 ml = ["sentence-transformers"]
 nlp = ["sentence-transformers", "spacy"]
@@ -3037,4 +3038,4 @@ nlp = ["sentence-transformers", "spacy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "2fbaf2f075bd88afc30f92eb5bfe195c593d5aa331bc7fc42789e38271537149"
+content-hash = "32ece6e8287182be101ad64d049d2610fad9ee29babd879879f3ddd85594ad45"
