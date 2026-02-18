@@ -21,5 +21,5 @@ TODO
 ```bash
 poetry config virtualenvs.in-project true --local
 poetry env use python3.12
-poetry install --with dev --extras "rule ml nlp"
+poetry install --with dev --extras "base"
 ```
