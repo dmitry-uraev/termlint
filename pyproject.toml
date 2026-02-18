@@ -28,7 +28,7 @@ sentence-transformers = { version = "^5.2.0", optional = true }
 rapidfuzz = { version="^3.14.3", optional= true }
 
 [tool.poetry.extras]
-all = ["spacy", "sentence-transformers"]  # full NLP
+nlp = ["spacy", "sentence-transformers"]  # full NLP
 ml = ["sentence-transformers"]            # ML-based extraction
 base = ["spacy", "rapidfuzz"]             # RuleExtractor + FuzzyVerification
 minimal = []                              # No dependencies
