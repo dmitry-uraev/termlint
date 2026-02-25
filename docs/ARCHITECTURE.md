@@ -21,7 +21,7 @@ Raw Text
 
 | Principle               | Description                                                                                |
 | ----------------------- | ------------------------------------------------------------------------------------------ |
-| Universal Models        | TextEntity, Entity, Result, MatchResult, CoverageReport                                    |
+| Universal Models        | TextEntity, Entity, Result, MatchResult, Report                                            |
 | Async Streams           | TextEntityStream[AsyncIterator[TextEntity]], MatchResultStream[AsyncIterator[MatchResult]] |
 | Chain of Responsibility | ExtractionStage pipeline (extractors combination)                                          |
 | Composition             | ParallelStage + sequential stages (extracted data processing)                              |
@@ -30,15 +30,18 @@ Raw Text
 
 ## Core Models & Types (Partly)
 
-| Name              | Purpose                                              | Key Fields/Methods                                           | Location       | Status |
-| ----------------- | ---------------------------------------------------- | ------------------------------------------------------------ | -------------- | ------ |
-| TextEntity        | Extracted term candidate                             | text, original_text, lemma, span, score, extractor_type      | core/models.py | +      |
-| Entity            | Glossary term                                        | id, label, synonyms, relations, definition                   | core/models.py | +      |
-| MatchResult       | Extraction -> Glossary link (TextEntity -> Entity)   | text_entity, entity, confidence, status                      | core/models.py | +      |
-| Result[T]         | Error handling monad                                 | ok(value), err(errors), map(), bind()                        | core/types.py  | +      |
-| TextEntityStream  | Async term iterator (provides extraction results)    | async for entity in stream, to_list(), from_list()           | core/types.py  | +      |
-| MatchResultStream | Async match iterator (provides verification results) | async for match in stream, to_list(), from_list()            | core/types.py  | +      |
-| CoverageReport    | Polymorphic final metrics (multiple types)           | report_type, coverage_pct, unknown_terms, suggested_entities | core/types.py  | TODO   |
+| Name              | Purpose                                              | Key Fields/Methods                                      | Location       | Status |
+| ----------------- | ---------------------------------------------------- | ------------------------------------------------------- | -------------- | ------ |
+| TextEntity        | Extracted term candidate                             | text, original_text, lemma, span, score, extractor_type | core/models.py | +      |
+| Entity            | Glossary term                                        | id, label, synonyms, relations, definition              | core/models.py | +      |
+| MatchResult       | Extraction -> Glossary link (TextEntity -> Entity)   | text_entity, entity, confidence, status                 | core/models.py | +      |
+| Report            | Polymorphic final metrics (all report types)         | report_type, coverage_pct, unknown_terms, matches       | core/models.py | TODO   |
+| ReportType        | Report types enum                                    | EXTRACTION\|VERIFICATION\|ONTOLOGY_UPDATE               | core/models.py | TODO   |
+| ReportConfig      | ReportStage configuration                            | include, exporters, quality_gates                       | core/models.py | TODO   |
+| QualityConfig     | CI/CD quality gates                                  | check(reports) -> bool                                  | core/models.py | TODO   |
+| Result[T]         | Error handling monad                                 | ok(value), err(errors), map(), bind()                   | core/types.py  | +      |
+| TextEntityStream  | Async term iterator (provides extraction results)    | async for entity in stream, to_list(), from_list()      | core/types.py  | +      |
+| MatchResultStream | Async match iterator (provides verification results) | async for match in stream, to_list(), from_list()       | core/types.py  | +      |
 
 ## Common Layers Principles (Partly)
 
@@ -49,9 +52,9 @@ Every stage returns Result[TextEntityStream]:
 ```text
 ExtractionStage.process(TextEntityStream)                       →    Result[TextEntityStream]
 VerificationStage.process(TextEntityStream)                     →    Result[MatchResultStream]
-ReportStage.process(TextEntityStream|MatchResultStream)         →    Result[List[CoverageReport]]
+ReportStage.process(TextEntityStream|MatchResultStream)         →    Result[List[Report]]
 
-pipeline.run(text) → Result[FinalOutput]    # CoverageReport[] + exported files
+pipeline.run(text) → Result[FinalOutput]    # Report[] + exported files
 ```
 
 Errors propagate automatically:
@@ -79,7 +82,7 @@ result = await (pipeline()
     .run_and_collect(text))
 
 if result.is_ok:
-    report = result.value  # List[CoverageReport] + files created
+    report = result.value  # List[Report] + files created
 ```
 
 ### Stage Implementation Strategy (Partly)
@@ -262,12 +265,12 @@ verifier/
 
 ### Architecture (TODO)
 
-> Universal ReportStage processes any stream → multiple CoverageReport types + exports
+> Universal ReportStage processes any stream → multiple Report types + exports
 
 ```text
 TextEntityStream ───┐
 MatchResultStream ──┼───▶ ReportStage ───┐
-                    │                    ├─── CoverageReport[] (VERIFICATION, ONTOLOGY_UPDATE...)
+                    │                    ├─── Report[] (VERIFICATION, ONTOLOGY_UPDATE...)
                     │                    ├─── Parallel Export (JSON, HTML, JUnit)
                     │                    └─── Quality Gates → Result[ok/err]
                     │
@@ -275,7 +278,7 @@ MatchResultStream ──┼───▶ ReportStage ───┐
 ```
 
 Input: TextEntityStream | MatchResultStream
-Output: Result[List[CoverageReport]] + generated files
+Output: Result[List[Report]] + generated files
 
 ### Directory Layout (TODO)
 
@@ -283,26 +286,26 @@ Output: Result[List[CoverageReport]] + generated files
 reporter/
 ├── __init__.py
 ├── stages/
-│   └── base.py          # ReportStage(ProcessingStage[Union[Stream], List[CoverageReport]])
+│   └── base.py          # ReportStage(ProcessingStage[Union[Stream], List[Report]])
 ├── exporters/           # JSONExporter, HTMLExporter, JUnitExporter
 │   ├── __init__.py
 │   ├── json.py
 │   ├── html.py
 │   └── junit.py
 ├── generators.py        # ReportType logic (VERIFICATION → ONTOLOGY_UPDATE from same data)
-└── config.py            # ReportConfig, QualityConfig
+└── config.py            # ReportConfig, QualityConfig (imported from core)
 ```
 
 ### Components (TODO)
 
-| Component      | Location           | Input -> Output                                | Contract                                                             | Status |
-| -------------- | ------------------ | ---------------------------------------------- | -------------------------------------------------------------------- | ------ |
-| ReportStage    | stages/base.py     | Union[Streams] -> List[CoverageReport] + files | Universal: aggregation, export, quality gates                        | TODO   |
-| CoverageReport | core/types.py      | Polymorphic metrics                            | report_type (EXTRACTION\|VERIFICATION \| ...) suggested_entities     | TODO   |
-| JSONExporter   | exporters/json.py  | CoverageReport -> JSON file                    | Universal serialization (adapts to report type)                      | TODO   |
-| HTMLExporter   | exporters/html.py  | CoverageReport -> HTML dashboard               | Jinja2 templates per report_type (coverage chart, suggestions table) | TODO   |
-| JUnitExporter  | exporters/junit.py | CoverageReport -> JUnit XML                    | Only QUALITY_GATE\|VERIFICATION data for CI                          | TODO   |
-| ReportConfig   | config.py          | Fluent params -> ReportStage                   | include=[ReportType], exporters=[], quality_gates={}                 | TODO   |
+| Component     | Location           | Input -> Output                        | Contract                                                             | Status |
+| ------------- | ------------------ | -------------------------------------- | -------------------------------------------------------------------- | ------ |
+| ReportStage   | stages/base.py     | Union[Streams] -> List[Report] + files | Universal: aggregation, export, quality gates                        | TODO   |
+| Report        | core/models.py     | Polymorphic metrics                    | report_type (EXTRACTION\|VERIFICATION \| ...) suggested_entities     | TODO   |
+| JSONExporter  | exporters/json.py  | Report -> JSON file                    | Universal serialization (adapts to report type)                      | TODO   |
+| HTMLExporter  | exporters/html.py  | Report -> HTML dashboard               | Jinja2 templates per report_type (coverage chart, suggestions table) | TODO   |
+| JUnitExporter | exporters/junit.py | Report -> JUnit XML                    | Only QUALITY_GATE\|VERIFICATION data for CI                          | TODO   |
+| ReportConfig  | config.py          | Fluent params -> ReportStage           | include=[ReportType], exporters=[], quality_gates={}                 | TODO   |
 
 Report types to usage scenarios:
 
