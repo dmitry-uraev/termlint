@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from enum import Enum, auto
@@ -30,6 +30,21 @@ class TextEntity:
     def normalized_form(self) -> str:
         return self.lemma.lower()
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize TextEntity to JSON-compatible dict"""
+        return {
+            "text": self.text,
+            "original_text": self.original_text,
+            "lemma": self.lemma,
+            "span": list(self.span),
+            "score": self.score,
+            "pos_tags": self.pos_tags,
+            "sentence": self.sentence,
+            "frequency": self.frequency,
+            "extractor_type": self.extractor_type,
+            "properties": self.properties
+        }
+
 
 # Verification Layer -----------------------------------------
 
@@ -41,6 +56,22 @@ class Entity:
     relations:     Dict[str, List[str]] = field(default_factory=dict)    # relation type -> list of related entity ids
     definition:    Optional[str] = None                                  # textual definition or description of the entity
     source:        Optional[str] = None                                  # source of the entity (glossary name, ontology IRI, etc.)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize Entity to JSON-compatible dict"""
+        result = {
+            "id": self.id,
+            "label": self.label,
+            "synonyms": self.synonyms,
+            "relations": self.relations
+        }
+
+        if self.definition is not None:
+            result["definition"] = self.definition
+        if self.source is not None:
+            result["source"] = self.source
+
+        return result
 
 
 class MatchStatus(Enum):
@@ -58,6 +89,16 @@ class MatchResult:
     confidence: float = 0.0
     status: MatchStatus = MatchStatus.UNKNOWN
     matched_synonym: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize MatchResult to JSON-compatible dict"""
+        return {
+            "text_entity": self.text_entity.to_dict(),
+            "entity": self.entity.to_dict() if self.entity else None,
+            "confidence": self.confidence,
+            "status": self.status.name,
+            "matched_synonym": self.matched_synonym
+        }
 
 
 # Reporting Layer -----------------------------------------
@@ -98,8 +139,31 @@ class Report:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the report to a dictionary, excluding None values for cleaner output."""
-        result = asdict(self)
-        return {k: v for k, v in result.items() if v is not None}
+        data: Dict[str, Any] = {
+            "report_type": self.report_type,
+            "total_items": self.total_items,
+            "processed_items": self.processed_items
+        }
+
+        # type-specific fields
+        if self.coverage_pct is not None:
+            data["coverage_pct"] = self.coverage_pct
+        if self.quality_score is not None:
+            data["quality_score"] = self.quality_score
+        if self.quality_pass is not None:
+            data["quality_pass"] = self.quality_pass
+        if self.exit_code is not None:
+            data["exit_code"] = self.exit_code
+        if self.unknown_terms is not None:
+            data["unknown_terms"] = [t.to_dict() for t in self.unknown_terms]
+        if self.suggested_entities is not None:
+            data["suggested_entities"] = [t.to_dict() for t in self.suggested_entities]
+        if self.matches is not None:
+            data["matches"] = [m.to_dict() for m in self.matches]
+        if self.raw_data:
+            data["raw_data"] = self.raw_data
+
+        return data
 
     @property
     def is_success(self) -> bool:

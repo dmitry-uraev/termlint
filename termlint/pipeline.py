@@ -1,20 +1,23 @@
 """Unified pipeline for termlint stages"""
 import asyncio
-from typing import List
-from termlint.core.models import MatchResult, TextEntity
+
+from typing import List, Optional
+
+from termlint.core.models import MatchResult, QualityConfig, Report, ReportConfig, ReportType, TextEntity
 from termlint.core.stages import ProcessingStage
 from termlint.core.types import MatchResultStream, Result, TextEntityStream
-from termlint.extraction.stages import NormalizationStage
-from termlint.extraction.extractors import RuleExtractor, BaseExtractor
-from termlint.extraction.stages.parallel import ParallelStage
+
+from termlint.extraction import NormalizationStage, ParallelStage, RuleExtractor, BaseExtractor
 from termlint.verifier import ExactVerificationStage, KnowledgeSource, FuzzyVerificationStage
+from termlint.reporter import ReportStage
+
 from termlint.utils import get_child_logger, timeit
 
 logger= get_child_logger('UnifiedPipeline')
 
 
 StageResultStream = Result[MatchResultStream] | Result[TextEntityStream]
-PipelineResult = Result[List[MatchResult]] | Result[List[TextEntity]]
+PipelineResult = Result[List[MatchResult]] | Result[List[TextEntity]] | Result[List[Report]]
 
 
 class UnifiedPipeline:
@@ -57,6 +60,17 @@ class UnifiedPipeline:
         self._stages.append(stage)
         return self
 
+    def report(
+        self,
+        config: Optional[ReportConfig] = None,
+        quality_config: Optional[QualityConfig] = None
+    ) -> 'UnifiedPipeline':
+        """Adds ReportStage - generates reports + exports"""
+        report_config = config or ReportConfig(exporters=["json"])
+        stage = ReportStage(report_config, quality_config if quality_config else QualityConfig())
+        self._stages.append(stage)
+        return self
+
     def stage(self, stage: ProcessingStage) -> 'UnifiedPipeline':
         """Adds custom stage"""
         self._stages.append(stage)
@@ -66,7 +80,7 @@ class UnifiedPipeline:
 
     @timeit
     async def run(self, text: str) -> StageResultStream:
-        """Execute pipeline (str -> TextEntityStream | MatchResultStream)"""
+        """Execute pipeline (str -> TextEntityStream | MatchResultStream | List[Report])"""
         logger.info(f"Running pipeline with {len(self._extractors)} extractors + {len(self._stages)} stages")
 
         if not self._extractors:
@@ -83,6 +97,7 @@ class UnifiedPipeline:
             stage_result = await stage.process(stream)
             if not stage_result.is_ok:
                 logger.error(f"Stage failed: {stage_result.errors}")
+                return stage_result
 
             stream = stage_result.value
 
@@ -108,17 +123,30 @@ class UnifiedPipeline:
         logger.info("Pipeline completed successfully")
         return Result.ok(current_data)
 
+    @timeit
     async def run_and_collect(self, text: str) -> PipelineResult:
         """Convenience: gather results into list"""
         result = await self.run(text)
         if not result.is_ok:
             return Result.err(result.errors)
 
-        collect_result = await result.value.to_list()
-        if not collect_result.is_ok:
-            return Result.err(collect_result.errors)
+        final_value = result.value
 
-        return Result.ok(collect_result.value)
+        if hasattr(final_value, 'to_list'):
+            collect_result = await final_value.to_list()
+            if not collect_result.is_ok:
+                return Result.err(collect_result.errors)
+            return Result.ok(collect_result.value)
+
+        if isinstance(final_value, list):
+            return Result.ok(final_value)
+
+        return Result.ok([final_value])
+
+        #collect_result = await result.value.to_list()
+        #if not collect_result.is_ok:
+        #    return Result.err(collect_result.errors)
+        #return Result.ok(collect_result.value)
 
 
 def pipeline() -> UnifiedPipeline:
@@ -141,19 +169,36 @@ async def demo():
 
     fuzzy_stage = FuzzyVerificationStage(source)#, threshold=60, limit=3, use_lemma=False)
 
+    # Pipeline without reporting ---------------------------------------------
+    # result = await (pipeline()
+    #     .extractors(RuleExtractor(model='ru_core_news_sm'))
+    #     # .normalize()
+    #     .verify(fuzzy_stage)
+    #     .run_and_collect(text))
+    # if result.is_ok:
+    #     stream = result.value
+    #     for entity in stream:
+    #         pprint(entity)
+    #     return
+    # else:
+    #     pprint(f"Pipeline failed: {result.errors}")
+
+    # Pipeline with reporting ------------------------------------------------
     result = await (pipeline()
-        .extractors(RuleExtractor(model='ru_core_news_sm'))
-        # .normalize()
-        .verify(fuzzy_stage)
-        .run_and_collect(text))
+                    .extractors(RuleExtractor(model='ru_core_news_sm'))
+                    .normalize()
+                    .verify(fuzzy_stage)
+                    .report(ReportConfig(include=[ReportType.EXTRACTION, ReportType.PROCESSING, ReportType.VERIFICATION, ReportType.ONTOLOGY_UPDATE, ReportType.QUALITY_GATE]))
+                    .run_and_collect(text))
 
     if result.is_ok:
-        stream = result.value
-        for entity in stream:
-            pprint(entity)
-        return
-    else:
-        pprint(f"Pipeline failed: {result.errors}")
+        reports = result.value
+        print(f"Generated {len(reports)} reports:")
+
+        for report in reports:
+            assert isinstance(report, Report)
+            data = report.to_dict()
+            pprint(data)
 
 
 if __name__ == "__main__":
