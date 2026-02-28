@@ -328,60 +328,78 @@ reporter/
 ```text
 [tool.termlint]
 source = "glossary.json"
-quality-gate.min-coverage = 0.90
-quality-gate.max-unknown = 5
+min-coverage = 90.0
+max-unknown = 5
 
-[tool.termlint.extraction]
-extractors = ["rules", "cvalue", "keybert"]
-pipeline = [
-    { stage = "normalize" },
-    { stage = "filter", min_score = 0.2 },
-    { stage = "rank" }
-]
+[tool.termlint.extraction.rules]
+model = "ru_core_news_sm"
 
-[tool.termlint.sources.platform]
-path = "terms/export.json"
-term-col = "label"
-synonyms-col = "synonyms"
+[tool.termlint.verifier.fuzzy]
+threshold = 85
+limit = 5
+
+[tool.termlint.reports]
+output_dir = "reports/"
+exporters = ["json"]
+include = ["verification", "quality_gate"]
 ```
+
+Priority: CLI args -> pyproject.toml -> defaults
 
 ## CLI Interface (TODO)
 
 > TODO: implement CLI tool for all usage scenarios
 
 ```text
-# Verify terminology in project
-termlint verify docs/ --source glossary.json --min-coverage 0.95
+# Full pipeline (default)
+termlint verify README.md --source glossary.json --min-coverage 95
 
 # Extract terms only
-termlint extract text.txt --extractors "rules,cvalue"
+termlint extract docs/ --exporters json
 
 # CI/CD quality gates
-termlint ci                 # Fail if coverage < 90%
+termlint ci # Exit 0/1
 
-# Generate HTML report
+# Generate JSON report
 termlint report docs/ --format html --output report.html
+
+# Config
+termlint config show
+termlint config validate
 ```
 
 > Layer concept
 
-| Component      | Command          | Output                   |
-| -------------- | ---------------- | ------------------------ |
-| VerifyCommand  | termlint verify  | Coverage + unknown terms |
-| ExtractCommand | termlint extract | Сырые TextEntity[]       |
-| ReportCommand  | termlint report  | HTML/JSON экспорт        |
-| QualityGate    | termlint ci      | Exit code 0/1            |
+| Command     | Scenario | Output                        | Exit codes |
+| ----------- | -------- | ----------------------------- | ---------- |
+| verify      | 1, 4     | Reports + files               | 0, 1, 3    |
+| extract     | 2, 3     | EXTRACTION\|PROCESSING report | 0, 3       |
+| ci          | 5        | QUALITY_GATE only             | 0, 1, 2, 3 |
+| config show | -        | Effective config (JSON)       | 0, 3       |
 
 ### Exit codes (TODO)
 
 > Concept, these should be configurable as well
 
 ```text
-0  → PASS (coverage ≥ 90%)
-1  → LOW_COVERAGE (< 90%)
-2  → TOO_MANY_UNKNOWN (> 5 unknown terms)
-3  → CONFIG_ERROR
+0  -> PASS (coverage >= min-coverage)
+1  -> LOW_COVERAGE (< 90%)
+2  -> TOO_MANY_UNKNOWN (> 5 unknown terms)
+3  -> CONFIG_ERROR/PARSE_ERROR
 ```
+
+### Phase 2 configuration (TODO)
+
+```text
+[tool.termlint.pipelines]
+"ml-verify" = [
+  { stage = "extract", extractors = ["rules"] },
+  { stage = "verify", type = "fuzzy" },
+  { stage = "report", types = ["quality_gate"] }
+]
+```
+
+# CLI: termlint run ml-verify
 
 ## Ideas
 
