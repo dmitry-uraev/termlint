@@ -153,7 +153,6 @@ class ReportStage(ProcessingStage[Union[TextEntityStream, MatchResultStream], Li
 
     def _generate_quality_gate(self, reports):
         """Generate QUALITY_GATE report"""
-        verification = next((r for r in reports if r.report_type == ReportType.VERIFICATION), None)
         quality_pass = self.quality_config.check(reports)
         exit_code = 0 if quality_pass else 1
 

@@ -28,17 +28,17 @@ Raw Text
 | Fluent API              | TextExtractionPipeline (all in one place, different processing combinations)               |
 | Universal Reporting     | Single ReportStage handles all report types via config                                     |
 
-## Core Models & Types (Partly)
+## Core Models & Types (Done)
 
 | Name              | Purpose                                              | Key Fields/Methods                                      | Location       | Status |
 | ----------------- | ---------------------------------------------------- | ------------------------------------------------------- | -------------- | ------ |
 | TextEntity        | Extracted term candidate                             | text, original_text, lemma, span, score, extractor_type | core/models.py | +      |
 | Entity            | Glossary term                                        | id, label, synonyms, relations, definition              | core/models.py | +      |
 | MatchResult       | Extraction -> Glossary link (TextEntity -> Entity)   | text_entity, entity, confidence, status                 | core/models.py | +      |
-| Report            | Polymorphic final metrics (all report types)         | report_type, coverage_pct, unknown_terms, matches       | core/models.py | TODO   |
-| ReportType        | Report types enum                                    | EXTRACTION\|VERIFICATION\|ONTOLOGY_UPDATE               | core/models.py | TODO   |
-| ReportConfig      | ReportStage configuration                            | include, exporters, quality_gates                       | core/models.py | TODO   |
-| QualityConfig     | CI/CD quality gates                                  | check(reports) -> bool                                  | core/models.py | TODO   |
+| Report            | Polymorphic final metrics (all report types)         | report_type, coverage_pct, unknown_terms, matches       | core/models.py | +      |
+| ReportType        | Report types enum                                    | EXTRACTION\|VERIFICATION\|ONTOLOGY_UPDATE etc.          | core/models.py | +      |
+| ReportConfig      | ReportStage configuration                            | include, exporters, quality_gates                       | core/models.py | +      |
+| QualityConfig     | CI/CD quality gates                                  | check(reports) -> bool                                  | core/models.py | +      |
 | Result[T]         | Error handling monad                                 | ok(value), err(errors), map(), bind()                   | core/types.py  | +      |
 | TextEntityStream  | Async term iterator (provides extraction results)    | async for entity in stream, to_list(), from_list()      | core/types.py  | +      |
 | MatchResultStream | Async match iterator (provides verification results) | async for match in stream, to_list(), from_list()       | core/types.py  | +      |
@@ -77,9 +77,9 @@ result = await (pipeline()
     .extractors(rule_extractor, cvalue_extractor)    # extraction stage
     .normalize()                                     # processing stage
     .filter(min_score=0.2)                           # processing stage
-    .verify(glossary="glossary.json")                # verification layer stages
+    .verify(fuzzy_stage)                             # verification layer stage
     .report(include=[VERIFICATION, QUALITY_GATE])    # reporter layer stage
-    .run_and_collect(text))
+    .run_and_collect(text))                          # pass text
 
 if result.is_ok:
     report = result.value  # List[Report] + files created
@@ -120,14 +120,14 @@ verifier/stages/fuzzy.py
 class FuzzyVerificationStage(ProcessingStage[TextEntityStream, MatchResultStream]):
 ```
 
-### Directory Layout (Partly)
+### Directory Layout (Done)
 
 ```text
 termlint/
 ├── core/
-│   ├── types.py             # TextEntity, Entity, MatchResult
-│   ├── stages.py            # Result, TextEntityStream, MatchResultStream
-│   └── models.py            # ProcessingStage[Input, Output]
+│   ├── types.py             # Result, TextEntityStream, MatchResultStream
+│   ├── stages.py            # ProcessingStage[Input, Output]
+│   └── models.py            # TextEntity, Entity, MatchResult, MatchStatus, Report, ReportType, ReportConfig, QualityConfig
 ├── extraction/
 │   ├── stages/              # ParallelStage, NormalizationStage (and others) -> ExtractionStage (base extraction stage) -> ProcessingStage
 │   └── extractors/          # Base Extractor + Rule Based (+ KeyBERT, CValue)
@@ -139,7 +139,7 @@ termlint/
 └── pipeline.py              # UnifiedPipeline
 ```
 
-### Error Handling Flow (Partly)
+### Error Handling Flow (Done)
 
 > Concept
 
@@ -201,7 +201,7 @@ extraction/
 | NormalizationStage     | stages/     | TextEntityStream → Result[TextEntityStream] | Lowercase, lemmatization                                             | +      |
 | FilterStage            | stages/     | TextEntityStream → Result[TextEntityStream] | TODO                                                                 | TODO   |
 | RankStage              | stages/     | TextEntityStream → Result[TextEntityStream] | TODO                                                                 | TODO   |
-| TextExtractionPipeline | pipeline.py | Fluent config → Result[Stream/List]         | Declarative pipeline builder                                         | Partly |
+| TextExtractionPipeline | pipeline.py | Fluent config → Result[Stream/List]         | Declarative pipeline builder                                         | +      |
 
 ### Extractors (Partly)
 
@@ -225,7 +225,7 @@ Ideas for keywords extraction:
 ```text
 Clean TextEntityStream ───┐
                           ├─── KnowledgeSource ───┐
-                          │   (JSONGlossary, SPARQL)    │
+                          │   (JSONGlossary, SPARQL)
                           └─── VerificationStage ───────┼───▶ Result[MatchResultStream]
                                                         │
                                                         ▼
@@ -235,7 +235,7 @@ Clean TextEntityStream ───┐
 Input: TextEntityStream (from Extraction Layer)
 Output: Result[MatchResultStream]
 
-### Directory Layer (Partly)
+### Directory Layer (Done)
 
 ```text
 verifier/
@@ -261,9 +261,9 @@ verifier/
 | SPARQLSource       | sources/        | endpoint → Entity[]                   | SPARQL queries → Entity (ontology via SPARQL)                            | TODO   |
 | Verifier           | stages/         | TextEntityStream -> MatchResultStream | Extraction → Matching → Results (exact, fuzzy)                           | +      |
 
-## Reporter (TODO)
+## Reporter (Partly)
 
-### Architecture (TODO)
+### Architecture (Done)
 
 > Universal ReportStage processes any stream → multiple Report types + exports
 
@@ -280,7 +280,7 @@ MatchResultStream ──┼───▶ ReportStage ───┐
 Input: TextEntityStream | MatchResultStream
 Output: Result[List[Report]] + generated files
 
-### Directory Layout (TODO)
+### Directory Layout (Done)
 
 ```text
 reporter/
@@ -296,30 +296,34 @@ reporter/
 └── config.py            # ReportConfig, QualityConfig (imported from core)
 ```
 
-### Components (TODO)
+### Components (Partly)
 
 | Component     | Location           | Input -> Output                        | Contract                                                             | Status |
 | ------------- | ------------------ | -------------------------------------- | -------------------------------------------------------------------- | ------ |
-| ReportStage   | stages/base.py     | Union[Streams] -> List[Report] + files | Universal: aggregation, export, quality gates                        | TODO   |
-| Report        | core/models.py     | Polymorphic metrics                    | report_type (EXTRACTION\|VERIFICATION \| ...) suggested_entities     | TODO   |
-| JSONExporter  | exporters/json.py  | Report -> JSON file                    | Universal serialization (adapts to report type)                      | TODO   |
+| ReportStage   | stages/base.py     | Union[Streams] -> List[Report] + files | Universal: aggregation, export, quality gates                        | +      |
+| Report        | core/models.py     | Polymorphic metrics                    | report_type (EXTRACTION\|VERIFICATION \| ...) suggested_entities     | +      |
+| JSONExporter  | exporters/json.py  | Report -> JSON file                    | Universal serialization (adapts to report type)                      | +      |
 | HTMLExporter  | exporters/html.py  | Report -> HTML dashboard               | Jinja2 templates per report_type (coverage chart, suggestions table) | TODO   |
 | JUnitExporter | exporters/junit.py | Report -> JUnit XML                    | Only QUALITY_GATE\|VERIFICATION data for CI                          | TODO   |
-| ReportConfig  | config.py          | Fluent params -> ReportStage           | include=[ReportType], exporters=[], quality_gates={}                 | TODO   |
+| ReportConfig  | core/models.py     | Fluent params -> ReportStage           | include=[ReportType], exporters=[], quality_gates={}, output_dir     | +      |
+| QualityConfig | core/models.py     | Fluent params -> ReportStage           | min_coverage, max_unknown, max_quality_score                         | +      |
 
-Report types to usage scenarios:
+### Report types to usage scenarios (Partly)
+
+> TODO: Need parameters clarification, hard-coded constants removing, and usage description
 
 | ReportType      | Input Stream      | Key Metrics                             | Usage Scenario |
 | --------------- | ----------------- | --------------------------------------- | -------------- |
 | EXTRACTION      | TextEntityStream  | total, avg_score, extractor_stats       | 2, 3           |
+| PROCESSING      | TextEntityStream  | total, avg_score, extractor_stats       | 2, 3           |
 | VERIFICATION    | MatchResultStream | coverage_pct, unknown_terms             | 1              |
-| ONTOLOGY_SOURCE | MatchResultStream | suggested_entities (high_score unknown) | 4              |
+| ONTOLOGY_UPDATE | MatchResultStream | suggested_entities (high_score unknown) | 4              |
 | QUALITY_GATE    | Any               | pass/fail, exit_code                    | CI/CD          |
 
 
 ## Configuration (pyproject.toml) (TODO)
 
-> Concept
+> Concept of DSL for configuring term extraction flows
 
 ```text
 [tool.termlint]
@@ -343,7 +347,7 @@ synonyms-col = "synonyms"
 
 ## CLI Interface (TODO)
 
-> Concept
+> TODO: implement CLI tool for all usage scenarios
 
 ```text
 # Verify terminology in project
@@ -361,7 +365,7 @@ termlint report docs/ --format html --output report.html
 
 > Layer concept
 
-| Компонент      | Команда          | Вывод                    |
+| Component      | Command          | Output                   |
 | -------------- | ---------------- | ------------------------ |
 | VerifyCommand  | termlint verify  | Coverage + unknown terms |
 | ExtractCommand | termlint extract | Сырые TextEntity[]       |
@@ -370,7 +374,7 @@ termlint report docs/ --format html --output report.html
 
 ### Exit codes (TODO)
 
-> Concept
+> Concept, these should be configurable as well
 
 ```text
 0  → PASS (coverage ≥ 90%)
@@ -383,16 +387,17 @@ termlint report docs/ --format html --output report.html
 
 ```text
 [x] KnowledgeSource protocols
-    ├─ JSONGlossarySource
+    ├─ [x] JSONGlossarySource
     ├─ OntologyAPISource (SPARQL)
     └─ PlatformDBSource (CSV/Excel)
 
 [x] Advanced Verifier
-    ├─ Fuzzy matching (rapidfuzz)
+    ├─ [x] Fuzzy matching (rapidfuzz)
     ├─ Semantic matching (embeddings)
     └─ Ontology reasoning (OWLReady2)
 
-[ ] Reports & Visualizations
+[x] Reports & Visualizations
+    ├─ [x] Reports to files (JSONExporter)
     ├─ Interactive HTML dashboard
     ├─ JUnit XML for CI
     └─ Coverage heatmaps
@@ -410,3 +415,5 @@ termlint report docs/ --format html --output report.html
 | 3. Extraction + processing | +          | +          | -            | PROCESSING                    | Extract, process, and build report (processed candidates statistics, no ontology comparison).          |
 | 4. Ontology update         | +          | +          | +            | VERIFICATION, ONTOLOGY_UPDATE | Extract, process, verify against ontology source, and build suggestions report.                        |
 | 5. From existing ontology  | -          | -          | +            | VERIFICATION, QUALITY_GATE    | Build report on top of existing ontology.                                                              |
+
+Ontology update reports should be possible to create at each scenario: 1, 2, 3, and 4 except 5.
