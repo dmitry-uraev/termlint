@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar, AsyncIterator
+from typing import Generic, TypeVar
 
 from termlint.core.types import Result
 

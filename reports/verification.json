@@ -1,14 +1,14 @@
 {
   "metadata": {
     "report_type": "verification",
-    "timestamp": "2026-02-28T16:31:08.431208",
+    "timestamp": "2026-03-01T12:52:10.350134",
     "termlint_version": "0.1.0"
   },
   "data": {
     "report_type": "verification",
     "total_items": 6,
-    "processed_items": 2,
-    "coverage_pct": 33.33333333333333,
+    "processed_items": 0,
+    "coverage_pct": 0.0,
     "quality_score": 0.0,
     "unknown_terms": [],
     "matches": [
@@ -88,27 +88,10 @@
             "token_count": 2
           }
         },
-        "entity": {
-          "id": "ml:010",
-          "label": "машинное обучение",
-          "synonyms": [
-            "machine learning",
-            "ML"
-          ],
-          "relations": {
-            "hyperonym": [
-              "ml:011"
-            ],
-            "hyponym": [
-              "ml:001"
-            ]
-          },
-          "definition": "Раздел искусственного интеллекта, изучающий алгоритмы, способные обучаться на данных без явного программирования.",
-          "source": "ml_glossary"
-        },
-        "confidence": 0.8571428571428572,
-        "status": "NEAR_MATCH",
-        "matched_synonym": "машинное обучение"
+        "entity": null,
+        "confidence": 0.0,
+        "status": "UNKNOWN",
+        "matched_synonym": null
       },
       {
         "text_entity": {
@@ -159,25 +142,10 @@
             "token_count": 2
           }
         },
-        "entity": {
-          "id": "ml:011",
-          "label": "искусственный интеллект",
-          "synonyms": [
-            "artificial intelligence",
-            "AI",
-            "ИИ"
-          ],
-          "relations": {
-            "hyponym": [
-              "ml:010"
-            ]
-          },
-          "definition": "Интеллект, демонстрируемый машинами в отличие от естественного интеллекта, создаваемого людьми.",
-          "source": "ml_glossary"
-        },
-        "confidence": 1.0,
-        "status": "NEAR_MATCH",
-        "matched_synonym": "искусственный интеллект"
+        "entity": null,
+        "confidence": 0.0,
+        "status": "UNKNOWN",
+        "matched_synonym": null
       },
       {
         "text_entity": {

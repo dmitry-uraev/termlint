@@ -3,12 +3,13 @@ import asyncio
 
 from typing import List, Optional
 
+from termlint.config import TermlintConfig
 from termlint.core.models import MatchResult, QualityConfig, Report, ReportConfig, ReportType, TextEntity
 from termlint.core.stages import ProcessingStage
 from termlint.core.types import MatchResultStream, Result, TextEntityStream
 
 from termlint.extraction import NormalizationStage, ParallelStage, RuleExtractor, BaseExtractor
-from termlint.verifier import ExactVerificationStage, KnowledgeSource, FuzzyVerificationStage
+from termlint.verifier import ExactVerificationStage, KnowledgeSource, FuzzyVerificationStage, JSONGlossarySource
 from termlint.reporter import ReportStage
 
 from termlint.utils import get_child_logger, timeit
@@ -26,6 +27,45 @@ class UnifiedPipeline:
     def __init__(self):
         self._extractors: List[BaseExtractor] = []
         self._stages: List[ProcessingStage] = []
+
+    # ==================== Config Bridge ==============================
+
+    @classmethod
+    async def from_config(cls, config: TermlintConfig) -> 'UnifiedPipeline':
+        """Created pipeline from TermlintConfig (pyproject.toml)"""
+        pipeline = cls()
+
+        for stage_name in config.pipeline.stages:
+            match stage_name:
+                case "extract":
+                    for name in config.extraction.extractors:
+                        if name == "rule":
+                            model = config.extraction.rules.get("model", "ru_core_news_sm")
+                            pipeline.with_rules(model)
+                case "normalize":
+                    pipeline.normalize()
+                case "verify":
+                    source = JSONGlossarySource(config.source)
+                    await source.initialize()
+
+                    if config.verifier.exact:
+                        pipeline.verify(ExactVerificationStage(source))
+                    if config.verifier.fuzzy:
+                        pipeline.verify(FuzzyVerificationStage(
+                            source,
+                            threshold=config.verifier.fuzzy.get("threshold", 85),
+                            limit=config.verifier.fuzzy.get("limit", 5)))
+
+                case "report":
+                    report_config = ReportConfig(
+                        include=[getattr(ReportType, t.upper()) for t in config.reports.include],
+                        exporters=config.reports.exporters
+                    )
+                    quality_config = config.quality_gates.to_quality_config()
+                    pipeline.report(report_config, quality_config)
+
+        logger.info(f"Pipeline created from config")
+        return pipeline
 
     # ==================== Extractors =================================
 
@@ -142,11 +182,6 @@ class UnifiedPipeline:
             return Result.ok(final_value)
 
         return Result.ok([final_value])
-
-        #collect_result = await result.value.to_list()
-        #if not collect_result.is_ok:
-        #    return Result.err(collect_result.errors)
-        #return Result.ok(collect_result.value)
 
 
 def pipeline() -> UnifiedPipeline:
