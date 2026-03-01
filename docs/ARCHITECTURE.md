@@ -225,11 +225,14 @@ Ideas for keywords extraction:
 ```text
 Clean TextEntityStream ───┐
                           ├─── KnowledgeSource ───┐
-                          │   (JSONGlossary, SPARQL)
-                          └─── VerificationStage ───────┼───▶ Result[MatchResultStream]
-                                                        │
-                                                        ▼
-                                                 CoverageMetrics + Report (Reporting Layer)
+                          │   (JSONGlossarySource)
+                          └─── VerifierFactory ────────┼───▶ Result[MatchResultStream]
+                                 │                     │
+                                 ├── ExactVerification │
+                                 ├── FuzzyVerification │
+                                 └── (Semantic/Ensemble)
+                                                       ▼
+                                              CoverageMetrics + Report
 ```
 
 Input: TextEntityStream (from Extraction Layer)
@@ -245,11 +248,12 @@ verifier/
 │   ├── base.py             # KnowledgeSource(Protocol)
 │   ├── json_glossary.py    # JSONGlossarySource
 │   └── sparql.py           # SPARQLSource (TODO)
-└── stages/
-    ├── exact.py            # Exact term matching
-    ├── semantic.py         # word2vec term matching (TODO)
-    ├── ensemble.py         # Any combination term matching (TODO)
-    └── fuzzy.py            # Fuzzy term matching
+├── stages/
+│   ├── exact.py            # Exact term matching
+│   ├── semantic.py         # word2vec term matching (TODO)
+│   ├── ensemble.py         # Any combination term matching (TODO)
+│   └── fuzzy.py            # Fuzzy term matching
+└── factory.py              # Builds verifier of the specified type according to config
 ```
 
 ### Components (Partly)
@@ -260,6 +264,16 @@ verifier/
 | JSONGlossarySource | sources/        | path → Entity[]                       | Loads glossary.json file → in-memory index                               | +      |
 | SPARQLSource       | sources/        | endpoint → Entity[]                   | SPARQL queries → Entity (ontology via SPARQL)                            | TODO   |
 | Verifier           | stages/         | TextEntityStream -> MatchResultStream | Extraction → Matching → Results (exact, fuzzy)                           | +      |
+| VerifierFactory    | factory.py      | VerifierConfig → ProcessingStage      | Unified entrypoint for verifier creation from type + config parameters   | +      |
+
+```python
+class VerifierFactory:
+    @staticmethod
+    async def create(config: VerifierConfig) -> ProcessingStage:
+        # Source creation + validation
+        # Unified defaults from config.get_effective_params()
+        # Exact | Fuzzy dispatch
+```
 
 ## Reporter (Partly)
 
@@ -321,30 +335,60 @@ reporter/
 | QUALITY_GATE    | Any               | pass/fail, exit_code                    | CI/CD          |
 
 
-## Configuration (pyproject.toml) (TODO)
+## Configuration (pyproject.toml) (Partly)
 
 > Concept of DSL for configuring term extraction flows
 
 ```text
 [tool.termlint]
-source = "glossary.json"
-min-coverage = 90.0
-max-unknown = 5
+output_dir = "reports/"
 
-[tool.termlint.extraction.rules]
-model = "ru_core_news_sm"
+[tool.termlint.extraction]
+extractors = ["rule"]
+rules.model = "ru_core_news_sm"
 
-[tool.termlint.verifier.fuzzy]
-threshold = 85
-limit = 5
+[tool.termlint.verifier]
+source = "domain_terms.json"
+type = "fuzzy"                    # exact | fuzzy
+fuzzy = {                         # config.get_fuzzy_defaults()
+    threshold = 85,               # 85%+ = NEAR_MATCH
+    limit = 3,                    # top-N candidates
+    scorer = "token_sort_ratio"
+}
 
 [tool.termlint.reports]
-output_dir = "reports/"
-exporters = ["json"]
 include = ["verification", "quality_gate"]
+exporters = ["json"]
+
+[tool.termlint.pipeline]
+stages = ["extract", "normalize", "verify", "report"]
 ```
 
-Priority: CLI args -> pyproject.toml -> defaults
+### Config Layer Flow (Partly)
+
+> Concept: Priority: CLI args -> pyproject.toml -> defaults
+
+TODO: refactor other layers
+
+Implemented for verification layer:
+
+```text
+pyproject.toml
+  ↓ Pydantic (TermlintConfig)
+config.get_fuzzy_defaults()    # Centralized defaults
+  ↓
+VerifierFactory.create()       # Validation + Creation
+  ↓
+ProcessingStage (no defaults)  # Clean stages
+```
+
+UnifiedPipeline.from_config() example for verify stage:
+
+```python
+case "verify":
+    verifier = await VerifierFactory.create(config.verifier)
+    pipeline.verify(verifier)
+```
 
 ## CLI Interface (TODO)
 
@@ -387,19 +431,6 @@ termlint config validate
 2  -> TOO_MANY_UNKNOWN (> 5 unknown terms)
 3  -> CONFIG_ERROR/PARSE_ERROR
 ```
-
-### Phase 2 configuration (TODO)
-
-```text
-[tool.termlint.pipelines]
-"ml-verify" = [
-  { stage = "extract", extractors = ["rules"] },
-  { stage = "verify", type = "fuzzy" },
-  { stage = "report", types = ["quality_gate"] }
-]
-```
-
-# CLI: termlint run ml-verify
 
 ## Ideas
 

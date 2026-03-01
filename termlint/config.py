@@ -1,6 +1,6 @@
 from pathlib import Path
 import tomllib
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -27,9 +27,33 @@ class ExtractionConfig(BaseModel):
 
 
 class VerifierConfig(BaseModel):
-    sources: List[str] = Field(default_factory=lambda: ["json_glossary"])
-    exact: bool = True
-    fuzzy: Dict[str, Any] = Field(default_factory=lambda: {"threshold": 85, "limit": 5})
+    source: Optional[Path] = None
+    type: Literal["exact", "fuzzy"] = "exact"
+    fuzzy: Dict[str, Any] = Field(default_factory=dict)
+    exact: Dict[str, Any] = Field(default_factory=dict)
+
+    @classmethod
+    def get_fuzzy_defaults(cls) -> Dict[str, Any]:
+        """FuzzyVerificationStage defaults"""
+        return {
+            "threshold": 85,
+            "limit": 3,
+            "scorer": "token_sort_ratio"
+        }
+
+    @classmethod
+    def get_exact_defaults(cls) -> Dict[str, Any]:
+        """ExactVerificationStage defaults"""
+        return {}
+
+    def get_effective_params(self, verifier_type: str) -> Dict[str, Any]:
+        """Config + defaults = effective params"""
+        defaults = (
+            self.get_fuzzy_defaults() if verifier_type == "fuzzy"
+            else self.get_exact_defaults()
+        )
+        user_params = getattr(self, verifier_type, {})
+        return {**defaults, **user_params}  # defaults + override
 
 
 class ReportsConfig(BaseModel):
@@ -42,7 +66,6 @@ class PipelineConfig(BaseModel):
 
 
 class TermlintConfig(BaseModel):
-    source: Path = Path("glossary.json")
     output_dir: Path = Path("reports/")
     quality_gates: QualityGates = Field(default_factory=QualityGates)
     extraction: ExtractionConfig = Field(default_factory=ExtractionConfig)

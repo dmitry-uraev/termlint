@@ -1,13 +1,13 @@
 {
   "metadata": {
     "report_type": "ontology_update",
-    "timestamp": "2026-03-01T12:52:10.350765",
+    "timestamp": "2026-03-01T23:49:50.994255",
     "termlint_version": "0.1.0"
   },
   "data": {
     "report_type": "ontology_update",
     "total_items": 6,
-    "processed_items": 6,
+    "processed_items": 4,
     "suggested_entities": [
       {
         "text": "нейронные сети",
@@ -52,27 +52,6 @@
         }
       },
       {
-        "text": "машинного обучения",
-        "original_text": "машинного обучения",
-        "lemma": "машинного обучения",
-        "span": [
-          3,
-          5
-        ],
-        "score": 0.5,
-        "pos_tags": [
-          "ADJ",
-          "NOUN"
-        ],
-        "sentence": "Нейронные сети машинного обучения обрабатывают большие данные.",
-        "frequency": 1,
-        "extractor_type": "rule_normalized",
-        "properties": {
-          "pattern_id": 2279837234746280186,
-          "token_count": 2
-        }
-      },
-      {
         "text": "большие данные",
         "original_text": "большие данные",
         "lemma": "большие данные",
@@ -86,27 +65,6 @@
           "NOUN"
         ],
         "sentence": "Нейронные сети машинного обучения обрабатывают большие данные.",
-        "frequency": 1,
-        "extractor_type": "rule_normalized",
-        "properties": {
-          "pattern_id": 2279837234746280186,
-          "token_count": 2
-        }
-      },
-      {
-        "text": "искусственный интеллект",
-        "original_text": "Искусственный интеллект",
-        "lemma": "искусственный интеллект",
-        "span": [
-          10,
-          12
-        ],
-        "score": 0.5,
-        "pos_tags": [
-          "ADJ",
-          "NOUN"
-        ],
-        "sentence": "Искусственный интеллект использует глубокое обучение.",
         "frequency": 1,
         "extractor_type": "rule_normalized",
         "properties": {

@@ -53,22 +53,21 @@ build-backend = "poetry.core.masonry.api"
 # termlint configuration -------------------------------------------------------------------
 
 [tool.termlint]
-source = "glossary.json"  # Glossary file path
-output-dir = "reports/"   # Export directory for reports
+output-dir = "reports/"
 quality-gates = { min-coverage = 90.0, max-unknown = 5 }
 
 [tool.termlint.extraction]
-extractors = ["rule", "cvalue", "keybert"]  # Extractors to use
-rules = { model = "ru_core_news_sm" }       # RuleExtractor: spaCy model
+extractors = ["rule"]
+rules.model = "ru_core_news_sm"
 
 [tool.termlint.verifier]
-fuzzy = { threshold = 85, limit = 5 }  # FuzzyVerificationStage
-exact = false                          # ExactVerificationStage
-sources = ["json_glossary"]            # Source KnowledgeSource
+source = "tests\\fixtures\\test_glossary.json"
+type = "fuzzy"
+fuzzy-params = { threshold = 85, limit = 3, scorer = "token_short_ratio" }
 
 [tool.termlint.reports]
-include = ["verification", "quality_gate", "ontology_update"]  # ReportType
-exporters = ["json"]  # JSONExporter (TODO: junit, HTMLExporter)
+include = ["verification", "quality_gate", "ontology_update"]
+exporters = ["json"]
 
 [tool.termlint.pipeline]
 stages = ["extract", "normalize", "verify", "report"]

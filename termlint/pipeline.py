@@ -3,13 +3,13 @@ import asyncio
 
 from typing import List, Optional
 
-from termlint.config import TermlintConfig
+from termlint.config import TermlintConfig, VerifierConfig
 from termlint.core.models import MatchResult, QualityConfig, Report, ReportConfig, ReportType, TextEntity
 from termlint.core.stages import ProcessingStage
 from termlint.core.types import MatchResultStream, Result, TextEntityStream
 
 from termlint.extraction import NormalizationStage, ParallelStage, RuleExtractor, BaseExtractor
-from termlint.verifier import ExactVerificationStage, KnowledgeSource, FuzzyVerificationStage, JSONGlossarySource
+from termlint.verifier import FuzzyVerificationStage, VerifierFactory
 from termlint.reporter import ReportStage
 
 from termlint.utils import get_child_logger, timeit
@@ -45,16 +45,8 @@ class UnifiedPipeline:
                 case "normalize":
                     pipeline.normalize()
                 case "verify":
-                    source = JSONGlossarySource(config.source)
-                    await source.initialize()
-
-                    if config.verifier.exact:
-                        pipeline.verify(ExactVerificationStage(source))
-                    if config.verifier.fuzzy:
-                        pipeline.verify(FuzzyVerificationStage(
-                            source,
-                            threshold=config.verifier.fuzzy.get("threshold", 85),
-                            limit=config.verifier.fuzzy.get("limit", 5)))
+                    verifier = await VerifierFactory.create(config.verifier)
+                    pipeline.verify(verifier)
 
                 case "report":
                     report_config = ReportConfig(
@@ -91,13 +83,9 @@ class UnifiedPipeline:
     #     logger.warning("Filter stage not implemented yet")
     #     return self
 
-    def verify(self, verifier: ProcessingStage | KnowledgeSource) -> 'UnifiedPipeline':
+    def verify(self, verifier: ProcessingStage) -> 'UnifiedPipeline':
         """Adds VerificationStage"""
-        if isinstance(verifier, KnowledgeSource):
-            stage = ExactVerificationStage(verifier)
-        else:
-            stage = verifier
-        self._stages.append(stage)
+        self._stages.append(verifier)
         return self
 
     def report(
@@ -202,7 +190,7 @@ async def demo():
     Искусственный интеллект использует глубокое обучение.
     """
 
-    fuzzy_stage = FuzzyVerificationStage(source)#, threshold=60, limit=3, use_lemma=False)
+    fuzzy_stage = FuzzyVerificationStage(source, **VerifierConfig().get_effective_params(verifier_type="fuzzy"))
 
     # Pipeline without reporting ---------------------------------------------
     # result = await (pipeline()

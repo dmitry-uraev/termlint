@@ -21,9 +21,8 @@ class ExactVerificationStage(ProcessingStage[TextEntityStream, MatchResultStream
     Algorithm: exact matching (term or lemma)
     """
 
-    def __init__(self, source: KnowledgeSource, min_confidence: float = 0.5) -> None:
+    def __init__(self, source: KnowledgeSource) -> None:
         self.source = source
-        self.min_confidence = min_confidence
 
     async def _process_entities(self, entities: List[TextEntity]) -> Result[List[MatchResult]]:
         """Match all entities"""
@@ -72,7 +71,7 @@ class ExactVerificationStage(ProcessingStage[TextEntityStream, MatchResultStream
             return MatchResult(
                 text_entity=text_entity,
                 entity=entity,
-                confidence=0.9,
+                confidence=0.5,
                 status=MatchStatus.MATCHED,
                 matched_synonym=text_entity.lemma
             )

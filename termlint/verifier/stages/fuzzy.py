@@ -2,14 +2,11 @@
 FuzzyVerification stage: TextEntityStream -> MatchResultStream
 """
 
-from typing import Dict, List
-
 from rapidfuzz import process, fuzz
-from rapidfuzz.distance import Levenshtein
 
 from termlint.core.stages import ProcessingStage
 from termlint.core.types import Result, TextEntityStream, MatchResultStream
-from termlint.core.models import TextEntity, MatchResult, MatchStatus, Entity
+from termlint.core.models import TextEntity, MatchResult, MatchStatus
 from termlint.verifier.sources import KnowledgeSource
 from termlint.utils.logger import get_child_logger
 
@@ -24,21 +21,12 @@ class FuzzyVerificationStage(ProcessingStage[TextEntityStream, MatchResultStream
     Algorithm: fuzzy matching (term or lemma)
     """
 
-    def __init__(
-        self,
-        source: KnowledgeSource,
-        threshold: int = 85,                 # match %
-        scorer: str = "token_sort_ratio",    # ratio, partial_ratio, token_set_ratio
-        limit: int = 1,                      # top N candidates
-        use_lemma: bool = True,              # check lemma if present
-        normalize: bool = False              # apply lower(), strip()
-    ) -> None:
+    def __init__(self, source: KnowledgeSource, threshold: int, scorer: str, limit: int,) -> None:
         self.source = source
-        self.threshold = threshold
-        self.scorer = getattr(fuzz, scorer)
-        self.limit = limit
-        self.use_lemma = use_lemma
-        self.normalize = normalize
+        self.threshold = threshold  # match %
+        self.scorer = getattr(fuzz, scorer)  # ratio, partial_ratio, token_set_ratio
+        self.limit = limit  # top N candidates
+        self.use_lemma = True  # takes lemma if present
 
         # TODO: provide convenient getter from source?
         self._glossary_terms = list(source.index.keys()) if source.index else []
@@ -64,8 +52,6 @@ class FuzzyVerificationStage(ProcessingStage[TextEntityStream, MatchResultStream
         else:
             text = entity.text
 
-        if self.normalize:
-            text = text.lower().strip()
         return text
 
     async def _find_best_match(self, entity: TextEntity, query: str) -> MatchResult:
