@@ -12,7 +12,7 @@ jobs:
     name: Test Termlint
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.12.10"]
 
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +27,7 @@ jobs:
         with:
           path: |
             ~/.cache/pypoetry
+            .venv
           key: poetry-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install Poetry
