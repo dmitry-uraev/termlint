@@ -27,7 +27,6 @@ jobs:
         with:
           path: |
             ~/.cache/pypoetry
-            .venv
           key: poetry-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install Poetry
