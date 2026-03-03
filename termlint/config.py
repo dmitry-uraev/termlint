@@ -77,10 +77,23 @@ class TermlintConfig(BaseModel):
     def from_pyproject(cls) -> 'TermlintConfig':
         try:
             with open("pyproject.toml", "rb") as f:
-                data = tomllib.load(f).get("tool", {}).get("termlint", {})
+                raw_data = tomllib.load(f).get("tool", {}).get("termlint", {})
 
-            if "pipeline" in data and "stages" in data["pipeline"]:
-                data["pipeline"]["stages"] = data["pipeline"]["stages"]
-            return cls(**data)
+            data = {
+                "output_dir": Path(raw_data.get("output_dir", "reports/")),
+                "quality_gates": raw_data.get("quality_gates", {}),
+                "extraction": raw_data.get("extraction", {}),
+                "verifier": raw_data.get("verifier", {}),
+                "reports": raw_data.get("reports", {}),
+                "pipeline": raw_data.get("pipeline", {}),
+            }
+
+            config = cls(**data)
+
+            if config.verifier.type == "fuzzy":
+                config.verifier.fuzzy = {**VerifierConfig.get_fuzzy_defaults(), **config.verifier.fuzzy}
+
+            return config
+
         except FileNotFoundError:
             return cls()

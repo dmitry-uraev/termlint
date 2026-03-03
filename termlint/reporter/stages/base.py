@@ -156,10 +156,14 @@ class ReportStage(ProcessingStage[Union[TextEntityStream, MatchResultStream], Li
         quality_pass = self.quality_config.check(reports)
         exit_code = 0 if quality_pass else 1
 
+        verification_report = next((r for r in reports if r.report_type == ReportType.VERIFICATION), None)
+        total_items = verification_report.total_items if verification_report else 0
+        processed_items = verification_report.processed_items if verification_report else 0
+
         return Report(
             report_type=ReportType.QUALITY_GATE,
-            total_items=0,
-            processed_items=0,
+            total_items=total_items,
+            processed_items=processed_items,
             quality_pass=quality_pass,
             exit_code=exit_code,
             raw_data={"source_reports": [r.report_type.value for r in reports]}

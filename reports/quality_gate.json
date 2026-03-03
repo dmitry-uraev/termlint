@@ -1,19 +1,18 @@
 {
   "metadata": {
     "report_type": "quality_gate",
-    "timestamp": "2026-03-01T23:49:50.994255",
+    "timestamp": "2026-03-03T23:33:25.712562",
     "termlint_version": "0.1.0"
   },
   "data": {
     "report_type": "quality_gate",
-    "total_items": 0,
-    "processed_items": 0,
+    "total_items": 6,
+    "processed_items": 2,
     "quality_pass": false,
     "exit_code": 1,
     "raw_data": {
       "source_reports": [
-        "verification",
-        "ontology_update"
+        "verification"
       ]
     }
   }
