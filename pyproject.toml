@@ -1,6 +1,6 @@
 [project]
 name = "termlint"
-version = "0.1.0"
+version = "0.1.0a1"
 description = "Terminology linter for a given subject area text"
 readme = "README.md"
 license = "MIT"

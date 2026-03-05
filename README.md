@@ -2,6 +2,15 @@
 
 Terminology linter for projects — extracts terms from code/docs and verifies coverage against your glossary/ontology.
 
+## What Is termlint?
+
+`termlint` is a CLI tool for terminology quality checks in text/documentation workflows.
+
+- extracts term candidates from text
+- verifies terms against your glossary (`exact`/`fuzzy`)
+- generates JSON reports (`verification`, `ontology_update`, `quality_gate`, `extraction`)
+- helps bootstrap and evolve glossaries (`glossary from-report`, `glossary merge`)
+
 > Concept
 
 ```text
@@ -98,7 +107,7 @@ termlint verify input.txt --source glossary.json --verifier fuzzy --threshold 85
 
 ```text
 Files     ... 100%
-✅ ml.txt ... 100%
+✅ input.txt ... 100%
 📊 Coverage: 33.3% (2/6)
 ⚠️  Quality Gate would FAIL in CI mode
 ```
