@@ -32,15 +32,31 @@ pass_config = click.make_pass_decorator(dict, ensure=True)
 @click.option("-v", "--verbose", count=True, help="Increase verbosity (-v: INFO, -vv: DEBUG)")
 @click.option("-q", "--quiet", count=True, help="Decrease verbosity (-q: ERROR, -qq: CRITICAL)")
 @click.option(
+    "--config",
+    "config_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to pyproject.toml with [tool.termlint] settings",
+)
+@click.option(
     "--log-level",
     type=click.Choice(["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"], case_sensitive=False),
     help="Override log level",
 )
 @click.option("--log-file", type=click.Path(path_type=Path), help="Write logs to a file")
 @pass_config
-def cli(ctx, verbose: int, quiet: int, log_level: Optional[str], log_file: Optional[Path]):
+def cli(
+    ctx,
+    verbose: int,
+    quiet: int,
+    config_path: Optional[Path],
+    log_level: Optional[str],
+    log_file: Optional[Path],
+):
     """Terminology linter for docs"""
-    config = TermlintConfig.from_pyproject()
+    try:
+        config = TermlintConfig.from_pyproject(config_path or Path("pyproject.toml"))
+    except Exception as exc:
+        raise click.ClickException(f"Failed to load config: {exc}") from exc
     setup_root_logger(
         level=resolve_logging_level(
             config.logging.level,

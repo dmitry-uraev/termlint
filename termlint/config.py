@@ -89,9 +89,10 @@ class TermlintConfig(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
     @classmethod
-    def from_pyproject(cls) -> 'TermlintConfig':
+    def from_pyproject(cls, pyproject_path: Path | str = "pyproject.toml") -> 'TermlintConfig':
+        path = Path(pyproject_path)
         try:
-            with open("pyproject.toml", "rb") as f:
+            with open(path, "rb") as f:
                 raw_data = tomllib.load(f).get("tool", {}).get("termlint", {})
 
             data = {
@@ -112,4 +113,6 @@ class TermlintConfig(BaseModel):
             return config
 
         except FileNotFoundError:
+            if path != Path("pyproject.toml"):
+                raise
             return cls()

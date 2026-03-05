@@ -34,6 +34,7 @@ termlint -vv verify <file>       # DEBUG logs
 termlint -q verify <file>        # ERROR only
 termlint --log-level DEBUG verify <file>
 termlint --log-file reports/termlint.log verify <file>
+termlint --config ./pyproject.toml verify <file> --source ./glossary.json
 ```
 
 You can also set defaults in `pyproject.toml`:
