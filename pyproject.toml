@@ -73,3 +73,11 @@ exporters = ["json"]
 
 [tool.termlint.pipeline]
 stages = ["extract", "normalize", "verify", "report"]
+
+[tool.termlint.logging]
+level = "WARNING"
+# log-file = "reports/termlint.log"
+fmt = "%(asctime)s [%(name)s] %(levelname)-8s %(message)s"
+datefmt = "%Y-%m-%d %H:%M:%S"
+max_bytes = 10485760
+backup_count = 5

@@ -1,7 +1,7 @@
 """Unified pipeline for termlint stages"""
 import asyncio
 
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from termlint.config import TermlintConfig, VerifierConfig
 from termlint.core.models import MatchResult, QualityConfig, Report, ReportConfig, ReportType, TextEntity
@@ -19,6 +19,7 @@ logger= get_child_logger('UnifiedPipeline')
 
 StageResultStream = Result[MatchResultStream] | Result[TextEntityStream]
 PipelineResult = Result[List[MatchResult]] | Result[List[TextEntity]] | Result[List[Report]]
+ProgressCallback = Callable[[int, int, str], None]
 
 
 class UnifiedPipeline:
@@ -107,7 +108,11 @@ class UnifiedPipeline:
     # ==================== Execute ====================================
 
     @timeit
-    async def run(self, text: str) -> StageResultStream:
+    async def run(
+        self,
+        text: str,
+        progress_callback: Optional[ProgressCallback] = None
+    ) -> StageResultStream:
         """Execute pipeline (str -> TextEntityStream | MatchResultStream | List[Report])"""
         logger.info(f"Running pipeline with {len(self._extractors)} extractors + {len(self._stages)} stages")
 
@@ -118,9 +123,15 @@ class UnifiedPipeline:
         if not extract_result.is_ok:
             return extract_result
 
+        total_steps = 1 + len(self._stages)  # extraction + processing stages
+        if progress_callback:
+            progress_callback(1, total_steps, "extract")
+
         stream = extract_result.value
         for i, stage in enumerate(self._stages):
             logger.debug(f"Stage {i+1}/{len(self._stages)}: {stage.__class__.__name__}")
+            if progress_callback:
+                progress_callback(i + 2, total_steps, stage.__class__.__name__)
 
             stage_result = await stage.process(stream)
             if not stage_result.is_ok:
@@ -152,9 +163,13 @@ class UnifiedPipeline:
         return Result.ok(current_data)
 
     @timeit
-    async def run_and_collect(self, text: str) -> PipelineResult:
+    async def run_and_collect(
+        self,
+        text: str,
+        progress_callback: Optional[ProgressCallback] = None
+    ) -> PipelineResult:
         """Convenience: gather results into list"""
-        result = await self.run(text)
+        result = await self.run(text, progress_callback=progress_callback)
         if not result.is_ok:
             return Result.err(result.errors)
 

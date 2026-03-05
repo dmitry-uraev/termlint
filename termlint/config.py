@@ -65,6 +65,15 @@ class PipelineConfig(BaseModel):
     stages: List[str] = Field(default_factory=list, validate_default=True)
 
 
+class LoggingConfig(BaseModel):
+    level: Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"] = "WARNING"
+    log_file: Optional[Path] = None
+    fmt: str = "%(asctime)s [%(name)s] %(levelname)-8s %(message)s"
+    datefmt: str = "%Y-%m-%d %H:%M:%S"
+    max_bytes: int = 10 * 1024 * 1024
+    backup_count: int = 5
+
+
 class TermlintConfig(BaseModel):
     output_dir: Path = Path("reports/")
     quality_gates: QualityGates = Field(default_factory=QualityGates)
@@ -72,6 +81,7 @@ class TermlintConfig(BaseModel):
     verifier: VerifierConfig = Field(default_factory=VerifierConfig)
     reports: ReportsConfig = Field(default_factory=ReportsConfig)
     pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
     @classmethod
     def from_pyproject(cls) -> 'TermlintConfig':
@@ -86,6 +96,7 @@ class TermlintConfig(BaseModel):
                 "verifier": raw_data.get("verifier", {}),
                 "reports": raw_data.get("reports", {}),
                 "pipeline": raw_data.get("pipeline", {}),
+                "logging": raw_data.get("logging", {}),
             }
 
             config = cls(**data)

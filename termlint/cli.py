@@ -1,17 +1,25 @@
 """Command-line interface for termlint."""
 
 import asyncio
+import logging
 from pathlib import Path
 from typing import List, Optional, Union
 
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from termlint.config import TermlintConfig
 from termlint.core.models import Report, ReportType
 from termlint.pipeline import UnifiedPipeline
 
-from termlint.utils.logger import get_child_logger
+from termlint.utils.logger import get_child_logger, setup_root_logger
 
 
 logger = get_child_logger("cli")
@@ -21,13 +29,36 @@ pass_config = click.make_pass_decorator(dict, ensure=True)
 
 @click.group()
 @click.version_option(package_name="termlint")
+@click.option("-v", "--verbose", count=True, help="Increase verbosity (-v: INFO, -vv: DEBUG)")
+@click.option("-q", "--quiet", count=True, help="Decrease verbosity (-q: ERROR, -qq: CRITICAL)")
+@click.option(
+    "--log-level",
+    type=click.Choice(["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"], case_sensitive=False),
+    help="Override log level",
+)
+@click.option("--log-file", type=click.Path(path_type=Path), help="Write logs to a file")
 @pass_config
-def cli(ctx):
+def cli(ctx, verbose: int, quiet: int, log_level: Optional[str], log_file: Optional[Path]):
     """Terminology linter for docs"""
-    ctx['config'] = TermlintConfig.from_pyproject()
+    config = TermlintConfig.from_pyproject()
+    setup_root_logger(
+        level=resolve_logging_level(
+            config.logging.level,
+            verbose=verbose,
+            quiet=quiet,
+            explicit_level=log_level,
+        ),
+        log_file=log_file or config.logging.log_file,
+        fmt=config.logging.fmt,
+        datefmt=config.logging.datefmt,
+        max_bytes=config.logging.max_bytes,
+        backup_count=config.logging.backup_count,
+        force=True,
+    )
+    ctx['config'] = config
 
 @cli.command()
-@click.argument('files', nargs=1, type=click.Path(exists=True, path_type=Path), required=True)
+@click.argument('files', nargs=-1, type=click.Path(exists=True, path_type=Path), required=True)
 @click.option('--source', type=click.Path(exists=True, path_type=Path), help='📚 Glossary file')
 @click.option('--verifier', type=click.Choice(["exact", "fuzzy"]), help="Verifier type")
 @click.option("--threshold", type=int, help="🎯 Fuzzy threshold")
@@ -35,7 +66,7 @@ def cli(ctx):
 @pass_config
 def verify(
     ctx,
-    files: Union[Path, List[Path]],
+    files: Union[Path, tuple[Path, ...], List[Path]],
     source: Optional[Path],
     verifier: Optional[str],
     threshold: Optional[int],
@@ -57,18 +88,36 @@ def verify(
             config.output_dir = output_dir
 
         pipeline = await UnifiedPipeline.from_config(config)
+        file_list = normalize_files(files)
 
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
             console=console,
         ) as progress:
+            overall_task = progress.add_task("[bold]Files[/bold]", total=len(file_list))
+            current_task = progress.add_task("Waiting...", total=1)
             all_reports = []
-            for file_path in normalize_files(files):
-                task = progress.add_task(f"📄 {file_path.name}", total=None)
+            for file_path in file_list:
+                progress.update(current_task, description=f"📄 {file_path.name}", total=1, completed=0)
 
-                result = await pipeline.run_and_collect(file_path.read_text(encoding='utf-8'))
-                progress.remove_task(task)
+                def on_step(step: int, total: int, stage_name: str):
+                    progress.update(
+                        current_task,
+                        description=f"📄 {file_path.name} • {stage_name}",
+                        total=total,
+                        completed=max(step - 1, 0),
+                    )
+
+                result = await pipeline.run_and_collect(
+                    file_path.read_text(encoding='utf-8'),
+                    progress_callback=on_step
+                )
+                progress.update(current_task, completed=progress.tasks[current_task].total, description=f"✅ {file_path.name}")
+                progress.advance(overall_task, 1)
 
                 if not result.is_ok:
                     console.print(f"[red]❌ Failed[/red] {file_path}: {result.errors}")
@@ -90,12 +139,12 @@ def verify(
     asyncio.run(run_pipeline())
 
 @cli.command()
-@click.argument("files", nargs=1, type=click.Path(exists=True, path_type=Path), required=True)
+@click.argument("files", nargs=-1, type=click.Path(exists=True, path_type=Path), required=True)
 @click.option("--output-dir", type=click.Path(file_okay=False, path_type=Path), help="📁 Output directory")
 @pass_config
 def extract(
     ctx,
-    files: Union[Path, List[Path]],
+    files: Union[Path, tuple[Path, ...], List[Path]],
     output_dir: Optional[Path]
 ):
     """Extract terms only"""
@@ -109,13 +158,35 @@ def extract(
         config.pipeline.stages = ["extract", "report"]
 
         pipeline = await UnifiedPipeline.from_config(config)
+        file_list = normalize_files(files)
 
-        with Progress(console=console) as progress:
-            for file_path in normalize_files(files):
-                task = progress.add_task(f"🔍 Extracting {file_path.name}", total=None)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+            overall_task = progress.add_task("[bold]Files[/bold]", total=len(file_list))
+            current_task = progress.add_task("Waiting...", total=1)
+            for file_path in file_list:
+                progress.update(current_task, description=f"🔍 {file_path.name}", total=1, completed=0)
 
-                result = await pipeline.run_and_collect(file_path.read_text(encoding='utf-8'))
-                progress.remove_task(task)
+                def on_step(step: int, total: int, stage_name: str):
+                    progress.update(
+                        current_task,
+                        description=f"🔍 {file_path.name} • {stage_name}",
+                        total=total,
+                        completed=max(step - 1, 0),
+                    )
+
+                result = await pipeline.run_and_collect(
+                    file_path.read_text(encoding='utf-8'),
+                    progress_callback=on_step
+                )
+                progress.update(current_task, completed=progress.tasks[current_task].total, description=f"✅ {file_path.name}")
+                progress.advance(overall_task, 1)
 
                 if not result.is_ok:
                     console.print(f"[red]❌ {result.errors}[/red]")
@@ -128,11 +199,11 @@ def extract(
     asyncio.run(run_pipeline())
 
 @cli.command()
-@click.argument("files", nargs=1, type=click.Path(exists=True, path_type=Path), required=True)
+@click.argument("files", nargs=-1, type=click.Path(exists=True, path_type=Path), required=True)
 @pass_config
 def ci(
     ctx,
-    files: Union[Path, List[Path]]
+    files: Union[Path, tuple[Path, ...], List[Path]]
 ):
     """CI/CD quality gates only"""
 
@@ -143,16 +214,38 @@ def ci(
         failed_files = []
 
         pipeline = await UnifiedPipeline.from_config(config)
+        file_list = normalize_files(files)
 
-        with Progress(console=console) as progress:
-            for file_path in normalize_files(files):
-                task = progress.add_task(f"🧪 Testing {file_path.name}", total=None)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+            overall_task = progress.add_task("[bold]Files[/bold]", total=len(file_list))
+            current_task = progress.add_task("Waiting...", total=1)
+            for file_path in file_list:
+                progress.update(current_task, description=f"🧪 {file_path.name}", total=1, completed=0)
 
-                result = await pipeline.run_and_collect(file_path.read_text(encoding='utf-8'))
-                progress.remove_task(task)
+                def on_step(step: int, total: int, stage_name: str):
+                    progress.update(
+                        current_task,
+                        description=f"🧪 {file_path.name} • {stage_name}",
+                        total=total,
+                        completed=max(step - 1, 0),
+                    )
+
+                result = await pipeline.run_and_collect(
+                    file_path.read_text(encoding='utf-8'),
+                    progress_callback=on_step
+                )
+                progress.update(current_task, completed=progress.tasks[current_task].total, description=f"✅ {file_path.name}")
+                progress.advance(overall_task, 1)
                 if not result.is_ok:
                     console.print(f"[red]❌ Pipeline error[/red]: {result.errors}")
-                    raise click.Abort(3)
+                    raise click.exceptions.Exit(3)
 
                 quality_report = next((r for r in result.value if isinstance(r, Report) and r.report_type == ReportType.QUALITY_GATE), None)
                 if quality_report and not quality_report.quality_pass:
@@ -160,8 +253,8 @@ def ci(
                     failed_files.append(file_path)
 
         if failed_files:
-            console.print(f"\n💥 [red bold]{len(failed_files)}/{len(normalize_files(files))} files failed quality gates[/red bold]")
-            raise click.Abort(1)
+            console.print(f"\n💥 [red bold]{len(failed_files)}/{len(file_list)} files failed quality gates[/red bold]")
+            raise click.exceptions.Exit(1)
 
     asyncio.run(run_pipeline())
 
@@ -197,9 +290,37 @@ def validate(ctx: dict):
     console.print(f"📋 Pipeline: {', '.join(config.pipeline.stages)}")
 
 
-def normalize_files(files: Union[Path, List]) -> List[Path]:
+def normalize_files(files: Union[Path, tuple, List]) -> List[Path]:
     """Path → List[Path]"""
     return [files] if isinstance(files, Path) else list(files)
+
+
+def resolve_logging_level(
+    config_level: str,
+    verbose: int,
+    quiet: int,
+    explicit_level: Optional[str],
+) -> int:
+    """Resolve logging level precedence: explicit > quiet > verbose > config."""
+    if explicit_level:
+        return level_name_to_int(explicit_level)
+
+    if quiet >= 2:
+        return logging.CRITICAL
+    if quiet == 1:
+        return logging.ERROR
+
+    if verbose >= 2:
+        return logging.DEBUG
+    if verbose == 1:
+        return logging.INFO
+
+    return level_name_to_int(config_level)
+
+
+def level_name_to_int(level_name: str) -> int:
+    """Convert standard logging level name to numeric value."""
+    return getattr(logging, level_name.upper(), logging.WARNING)
 
 
 if __name__ == "__main__":
