@@ -17,7 +17,7 @@ class VerifierFactory:
         """Entrypoint for verifier creation"""
 
         if not config.source:
-            raise ValueError("Verification requires --source or [tool.termlint.verifier.source]")
+            raise ValueError("Verification requires a glossary source. Pass --source or set [tool.termlint.verifier.source].")
 
         if not config.source.exists():
             raise FileNotFoundError(f"Glossary not found: {config.source}")

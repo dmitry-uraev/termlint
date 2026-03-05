@@ -63,7 +63,6 @@ extractors = ["rule"]
 rules = { model = "ru_core_news_sm" }
 
 [tool.termlint.verifier]
-source = "tests\\fixtures\\test_glossary.json"
 type = "fuzzy"
 fuzzy-params = { threshold = 85, limit = 3, scorer = "token_sort_ratio" }
 

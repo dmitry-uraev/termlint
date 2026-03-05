@@ -59,7 +59,7 @@ def cli(ctx, verbose: int, quiet: int, log_level: Optional[str], log_file: Optio
 
 @cli.command()
 @click.argument('files', nargs=-1, type=click.Path(exists=True, path_type=Path), required=True)
-@click.option('--source', type=click.Path(exists=True, path_type=Path), help='📚 Glossary file')
+@click.option('--source', type=click.Path(exists=True, path_type=Path), required=True, help='📚 Glossary file')
 @click.option('--verifier', type=click.Choice(["exact", "fuzzy"]), help="Verifier type")
 @click.option("--threshold", type=int, help="🎯 Fuzzy threshold")
 @click.option("--output-dir", type=click.Path(file_okay=False, path_type=Path), help="📁 Output directory")
@@ -67,7 +67,7 @@ def cli(ctx, verbose: int, quiet: int, log_level: Optional[str], log_file: Optio
 def verify(
     ctx,
     files: Union[Path, tuple[Path, ...], List[Path]],
-    source: Optional[Path],
+    source: Path,
     verifier: Optional[str],
     threshold: Optional[int],
     output_dir: Optional[Path]
@@ -78,8 +78,7 @@ def verify(
 
         # CLI overrides
         config = ctx['config']
-        if source:
-            config.verifier.source = Path(source)
+        config.verifier.source = Path(source)
         if verifier:
             config.verifier.type = verifier
         if threshold:
@@ -200,15 +199,18 @@ def extract(
 
 @cli.command()
 @click.argument("files", nargs=-1, type=click.Path(exists=True, path_type=Path), required=True)
+@click.option('--source', type=click.Path(exists=True, path_type=Path), required=True, help='📚 Glossary file')
 @pass_config
 def ci(
     ctx,
-    files: Union[Path, tuple[Path, ...], List[Path]]
+    files: Union[Path, tuple[Path, ...], List[Path]],
+    source: Path
 ):
     """CI/CD quality gates only"""
 
     async def run_pipeline():
         config = ctx['config']
+        config.verifier.source = Path(source)
         config.reports.include = [ReportType.VERIFICATION, ReportType.QUALITY_GATE]
 
         failed_files = []
