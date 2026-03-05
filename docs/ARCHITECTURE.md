@@ -15,6 +15,8 @@ Raw Text
                           └─▶ Verification stage (Exact, Fuzzy, Semantic, Ensemble) + OntologySource
                                 └─▶ MatchResultStream
                                     └─▶  Report stage (Ontology coverage and statistics reporting and exporting)
+                                          └─▶ Glossary tools (from-report / merge)
+                                                └─▶ glossary_generated.json / glossary_merged.json / conflicts / summary
 ```
 
 ## Design Principles (Done)
@@ -136,6 +138,12 @@ termlint/
 │   └── sources/             # KnowledgeSource, JSONGlossarySource
 ├── reporter/
 │   └── stages/              # ReportStage → ProcessingStage
+├── glossary/
+│   ├── converter.py         # ONTOLOGY_UPDATE candidates -> Entity[]
+│   ├── merge.py             # Entity[] merge with policies + conflicts
+│   ├── io.py                # Report/Glossary JSON load+save helpers
+│   ├── models.py            # MergePolicy, MergeConflict, MergeSummary
+│   └── utils.py             # canonical term + deterministic id helpers
 └── pipeline.py              # UnifiedPipeline
 ```
 
@@ -288,7 +296,7 @@ MatchResultStream ──┼───▶ ReportStage ───┐
                     │                    ├─── Parallel Export (JSON, HTML, JUnit)
                     │                    └─── Quality Gates → Result[ok/err]
                     │
-                    └─→ reports/verification.json, suggestions.json, coverage.html
+                    └─→ reports/verification.json, reports/ontology_update.json, reports/quality_gate.json
 ```
 
 Input: TextEntityStream | MatchResultStream
@@ -333,6 +341,59 @@ reporter/
 | VERIFICATION    | MatchResultStream | coverage_pct, unknown_terms             | 1              |
 | ONTOLOGY_UPDATE | MatchResultStream | suggested_entities (high_score unknown) | 4              |
 | QUALITY_GATE    | Any               | pass/fail, exit_code                    | CI/CD          |
+
+
+## Glossary Layer (Done)
+
+### Architecture (Done)
+
+> Converts `ONTOLOGY_UPDATE` reports into glossary JSON and merges updates with existing glossaries
+
+```text
+reports/ontology_update.json
+          │
+          └───▶ glossary from-report
+                    └───▶ glossary_generated.json
+                               │
+existing glossary.json ────────┼───▶ glossary merge
+                               │      (on-match / on-conflict policies)
+                               └───▶ glossary_merged.json + merge_conflicts.json + merge_summary.json
+```
+
+### Directory Layout (Done)
+
+```text
+glossary/
+├── __init__.py
+├── converter.py      # convert_candidates_to_entities(candidates) -> Entity[]
+├── merge.py          # merge_entities(base, updates, policy) -> (merged, conflicts, summary)
+├── io.py             # load/write report+glossary JSON
+├── models.py         # MatchPolicy, ConflictPolicy, MergePolicy, MergeConflict, MergeSummary
+└── utils.py          # canonical_term(), stable_id()
+```
+
+### Components (Done)
+
+| Component                             | Location              | Input -> Output                            | Contract                                           | Status         |
+| ------------------------------------- | --------------------- | ------------------------------------------ | -------------------------------------------------- | -------------- |
+| `convert_candidates_to_entities`      | glossary/converter.py | `List[TextEntity] -> List[Entity]`         | canonical dedupe by lemma/text + deterministic IDs | +              |
+| `merge_entities`                      | glossary/merge.py     | `base + updates -> merged/conflicts`       | policy-based merge (`skip                          | merge-synonyms | replace`) + conflicts | + |
+| `load_suggested_entities_from_report` | glossary/io.py        | ontology_update JSON -> `List[TextEntity]` | validates `data.suggested_entities` shape          | +              |
+| `load_entities_from_glossary`         | glossary/io.py        | glossary JSON -> `List[Entity]`            | validates glossary entity shape                    | +              |
+| `write_entities_to_glossary`          | glossary/io.py        | `List[Entity] -> glossary.json`            | deterministic JSON serialization                   | +              |
+
+### Generated Reports / Artifacts (Done)
+
+| Artifact                                | Produced By                                   | Type                 | Description                                                                                    |
+| --------------------------------------- | --------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------- |
+| `reports/glossary_generated.json`       | `termlint glossary from-report`               | Glossary JSON        | Generated glossary entities from `reports/ontology_update.json` (deduplicated, stable IDs).    |
+| `reports/glossary_merged.json`          | `termlint glossary merge`                     | Glossary JSON        | Final merged glossary from `--base` + `--updates` according to selected merge policy.          |
+| `reports/glossary_merge_conflicts.json` | `termlint glossary merge --conflicts-out ...` | Conflict report JSON | List of merge conflicts (`id_label_mismatch`, `ambiguous_term_match`, etc.) for manual review. |
+| `reports/glossary_merge_summary.json`   | `termlint glossary merge --summary-out ...`   | Summary report JSON  | Merge counters: `added`, `updated`, `skipped`, `conflicts` to support CI/automation.           |
+
+Notes:
+- `--conflicts-out` and `--summary-out` are optional; if omitted, only merged glossary is produced.
+- Same schema applies for conflict demo files (e.g., `glossary_merge_conflict_details.json`, `glossary_merge_conflict_summary.json`).
 
 
 ## Configuration (pyproject.toml) (Partly)
@@ -390,46 +451,48 @@ case "verify":
     pipeline.verify(verifier)
 ```
 
-## CLI Interface (TODO)
-
-> TODO: implement CLI tool for all usage scenarios
+## CLI Interface (Done)
 
 ```text
 # Full pipeline (default)
-termlint verify README.md --source glossary.json --min-coverage 95
+termlint verify README.md --source glossary.json --verifier fuzzy --threshold 85
 
 # Extract terms only
-termlint extract docs/ --exporters json
+termlint extract docs/
 
 # CI/CD quality gates
-termlint ci # Exit 0/1
+termlint ci README.md --source glossary.json
 
-# Generate JSON report
-termlint report docs/ --format html --output report.html
+# Glossary bootstrap from ontology update report
+termlint glossary from-report --report reports/ontology_update.json --out glossary.generated.json
+termlint glossary merge --base glossary.json --updates glossary.generated.json --out glossary.merged.json
 
 # Config
-termlint config show
-termlint config validate
+termlint config
+termlint validate
 ```
 
 > Layer concept
 
-| Command     | Scenario | Output                        | Exit codes |
-| ----------- | -------- | ----------------------------- | ---------- |
-| verify      | 1, 4     | Reports + files               | 0, 1, 3    |
-| extract     | 2, 3     | EXTRACTION\|PROCESSING report | 0, 3       |
-| ci          | 5        | QUALITY_GATE only             | 0, 1, 2, 3 |
-| config show | -        | Effective config (JSON)       | 0, 3       |
+| Command              | Scenario | Output                                       | Exit codes |
+| -------------------- | -------- | -------------------------------------------- | ---------- |
+| verify               | 1, 4     | Reports + files                              | 0, 2, 3    |
+| extract              | 2, 3     | EXTRACTION report                            | 0, 2, 3    |
+| ci                   | 5        | QUALITY_GATE only                            | 0, 1, 2, 3 |
+| glossary from-report | 4        | `glossary_generated.json`                    | 0, 2, 3    |
+| glossary merge       | 4, 5     | merged glossary + optional conflicts/summary | 0, 2, 3    |
+| config               | -        | Effective config (JSON)                      | 0, 2       |
+| validate             | -        | Config validation                            | 0, 2       |
 
-### Exit codes (TODO)
+### Exit codes (Done)
 
-> Concept, these should be configurable as well
+Stable CLI contract:
 
 ```text
-0  -> PASS (coverage >= min-coverage)
-1  -> LOW_COVERAGE (< 90%)
-2  -> TOO_MANY_UNKNOWN (> 5 unknown terms)
-3  -> CONFIG_ERROR/PARSE_ERROR
+0  -> PASS / successful execution
+1  -> QUALITY_GATE_FAIL (ci command)
+2  -> USAGE_OR_CONFIG_ERROR (invalid options/config/source/input files)
+3  -> INTERNAL_PIPELINE_ERROR (unexpected runtime errors)
 ```
 
 ## Ideas

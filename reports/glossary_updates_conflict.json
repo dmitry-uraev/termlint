@@ -1,0 +1,10 @@
+[
+  {
+    "id": "ml:001",
+    "label": "deep learning",
+    "synonyms": ["DL"],
+    "relations": {},
+    "definition": "Conflicting update example",
+    "source": "example"
+  }
+]

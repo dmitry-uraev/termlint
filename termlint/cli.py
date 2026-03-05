@@ -18,6 +18,15 @@ from rich.progress import (
 )
 from termlint.config import TermlintConfig
 from termlint.core.models import Report, ReportType
+from termlint.glossary import (
+    convert_candidates_to_entities,
+    load_entities_from_glossary,
+    load_suggested_entities_from_report,
+    merge_entities,
+    write_entities_to_glossary,
+    write_json,
+)
+from termlint.glossary.models import ConflictPolicy, MatchPolicy, MergePolicy
 from termlint.pipeline import UnifiedPipeline
 
 from termlint.utils.logger import get_child_logger, setup_root_logger
@@ -287,6 +296,105 @@ def ci(
             raise click.exceptions.Exit(ExitCode.QUALITY_GATE_FAIL)
 
     asyncio.run(run_pipeline())
+
+
+@cli.group()
+def glossary():
+    """Glossary tools for conversion and merge workflows."""
+
+
+@glossary.command("from-report")
+@click.option("--report", "report_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), required=True, help="Path to ontology_update report JSON")
+@click.option("--out", "output_path", type=click.Path(dir_okay=False, path_type=Path), required=True, help="Output glossary JSON path")
+@click.option("--min-score", type=float, default=0.0, show_default=True, help="Minimum candidate score")
+@click.option("--min-frequency", type=int, default=1, show_default=True, help="Minimum candidate frequency")
+@click.option("--namespace", type=str, default="auto", show_default=True, help="Generated ID namespace")
+def glossary_from_report(
+    report_path: Path,
+    output_path: Path,
+    min_score: float,
+    min_frequency: int,
+    namespace: str,
+):
+    """Convert ONTOLOGY_UPDATE report to glossary JSON."""
+    try:
+        candidates = load_suggested_entities_from_report(report_path)
+        entities = convert_candidates_to_entities(
+            candidates,
+            namespace=namespace,
+            min_score=min_score,
+            min_frequency=min_frequency,
+        )
+        write_entities_to_glossary(entities, output_path)
+        console.print(f"✅ [green]Generated glossary[/green]: {output_path} ({len(entities)} entities)")
+    except ValueError as exc:
+        console.print(f"[red]❌ Glossary conversion error[/red]: {exc}")
+        raise click.exceptions.Exit(ExitCode.USAGE_OR_CONFIG_ERROR) from exc
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.exception("Unexpected glossary conversion failure")
+        console.print("[red]❌ Internal error during glossary conversion[/red]")
+        raise click.exceptions.Exit(ExitCode.INTERNAL_PIPELINE_ERROR) from exc
+
+
+@glossary.command("merge")
+@click.option("--base", "base_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), required=True, help="Base glossary JSON path")
+@click.option("--updates", "updates_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), required=True, help="Updates glossary JSON path")
+@click.option("--out", "output_path", type=click.Path(dir_okay=False, path_type=Path), required=True, help="Merged glossary output path")
+@click.option(
+    "--on-match",
+    type=click.Choice([p.value for p in MatchPolicy]),
+    default=MatchPolicy.MERGE_SYNONYMS.value,
+    show_default=True,
+    help="Action when update matches base term",
+)
+@click.option(
+    "--on-conflict",
+    type=click.Choice([p.value for p in ConflictPolicy]),
+    default=ConflictPolicy.REPORT.value,
+    show_default=True,
+    help="Action on merge conflicts",
+)
+@click.option("--conflicts-out", type=click.Path(dir_okay=False, path_type=Path), help="Optional path for conflict report JSON")
+@click.option("--summary-out", type=click.Path(dir_okay=False, path_type=Path), help="Optional path for merge summary JSON")
+def glossary_merge(
+    base_path: Path,
+    updates_path: Path,
+    output_path: Path,
+    on_match: str,
+    on_conflict: str,
+    conflicts_out: Optional[Path],
+    summary_out: Optional[Path],
+):
+    """Merge update glossary into base glossary."""
+    try:
+        base_entities = load_entities_from_glossary(base_path)
+        update_entities = load_entities_from_glossary(updates_path)
+
+        policy = MergePolicy(
+            on_match=MatchPolicy(on_match),
+            on_conflict=ConflictPolicy(on_conflict),
+        )
+        merged, conflicts, summary = merge_entities(base_entities, update_entities, policy)
+
+        write_entities_to_glossary(merged, output_path)
+        if conflicts_out:
+            write_json([c.to_dict() for c in conflicts], conflicts_out)
+        if summary_out:
+            write_json(summary.to_dict(), summary_out)
+
+        console.print(
+            "✅ [green]Merged glossary[/green]: "
+            f"{output_path} (added={summary.added}, updated={summary.updated}, "
+            f"skipped={summary.skipped}, conflicts={summary.conflicts})"
+        )
+    except ValueError as exc:
+        console.print(f"[red]❌ Glossary merge error[/red]: {exc}")
+        raise click.exceptions.Exit(ExitCode.USAGE_OR_CONFIG_ERROR) from exc
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.exception("Unexpected glossary merge failure")
+        console.print("[red]❌ Internal error during glossary merge[/red]")
+        raise click.exceptions.Exit(ExitCode.INTERNAL_PIPELINE_ERROR) from exc
+
 
 @cli.command()
 @pass_config

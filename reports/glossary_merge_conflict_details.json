@@ -1,0 +1,12 @@
+[
+  {
+    "conflict_type": "id_label_mismatch",
+    "message": "Update entity ID already exists with a different label",
+    "base_id": "ml:001",
+    "update_id": "ml:001",
+    "raw_data": {
+      "base_label": "нейронная сеть",
+      "update_label": "deep learning"
+    }
+  }
+]

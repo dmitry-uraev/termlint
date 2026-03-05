@@ -16,6 +16,79 @@ Async functional pipeline with composable stages and universal TextEntity model.
 
 TODO
 
+## Glossary JSON Schema
+
+`termlint` expects a glossary file as a JSON array of objects.
+
+Required fields per entity:
+- `id` (`string`)
+- `label` (`string`)
+
+Optional fields:
+- `synonyms` (`string[]`, default `[]`)
+- `relations` (`object<string, string[]>`, default `{}`)
+- `definition` (`string | null`)
+- `source` (`string | null`)
+
+Minimal valid example:
+
+```json
+[
+  {
+    "id": "ml:001",
+    "label": "machine learning"
+  }
+]
+```
+
+Extended example:
+
+```json
+[
+  {
+    "id": "ml:001",
+    "label": "machine learning",
+    "synonyms": ["ML"],
+    "relations": {
+      "related_to": ["ml:002"]
+    },
+    "definition": "Field focused on learning patterns from data.",
+    "source": "internal-glossary"
+  }
+]
+```
+
+Common validation/runtime errors:
+- File not found: `Glossary file not found: <path>`
+- Invalid JSON syntax: `Invalid JSON in <path>: ...`
+- Invalid entity shape/type: `Failed to initialize glossary source '<path>': ...`
+
+## Glossary Tooling
+
+Create glossary from `ontology_update` report:
+
+```bash
+termlint glossary from-report \
+  --report reports/ontology_update.json \
+  --out glossary.generated.json \
+  --min-score 0.7 \
+  --min-frequency 1 \
+  --namespace auto
+```
+
+Merge generated glossary into an existing glossary:
+
+```bash
+termlint glossary merge \
+  --base glossary.json \
+  --updates glossary.generated.json \
+  --out glossary.merged.json \
+  --on-match merge-synonyms \
+  --on-conflict report \
+  --conflicts-out merge.conflicts.json \
+  --summary-out merge.summary.json
+```
+
 ## Development
 
 ```bash

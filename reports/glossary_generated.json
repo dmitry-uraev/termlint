@@ -1,0 +1,30 @@
+[
+  {
+    "id": "auto:cc7b1d20c4",
+    "label": "большие данные",
+    "synonyms": [],
+    "relations": {},
+    "source": "termlint:ontology_update"
+  },
+  {
+    "id": "auto:ba5d97c69d",
+    "label": "глубокое обучение",
+    "synonyms": [],
+    "relations": {},
+    "source": "termlint:ontology_update"
+  },
+  {
+    "id": "auto:02a0087560",
+    "label": "нейронные сети",
+    "synonyms": [],
+    "relations": {},
+    "source": "termlint:ontology_update"
+  },
+  {
+    "id": "auto:77e9a979d6",
+    "label": "сети машинного",
+    "synonyms": [],
+    "relations": {},
+    "source": "termlint:ontology_update"
+  }
+]
