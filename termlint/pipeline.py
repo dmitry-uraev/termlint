@@ -42,7 +42,8 @@ class UnifiedPipeline:
                     for name in config.extraction.extractors:
                         if name == "rule":
                             model = config.extraction.rules.get("model", "ru_core_news_sm")
-                            pipeline.with_rules(model)
+                            auto_download_model = bool(config.extraction.rules.get("auto_download_model", False))
+                            pipeline.with_rules(model=model, auto_download_model=auto_download_model)
                 case "normalize":
                     pipeline.normalize()
                 case "verify":
@@ -67,9 +68,15 @@ class UnifiedPipeline:
         self._extractors.extend(extractors)
         return self
 
-    def with_rules(self, model: str = 'en_core_web_sm') -> 'UnifiedPipeline':
+    def with_rules(
+        self,
+        model: str = 'en_core_web_sm',
+        auto_download_model: bool = False
+    ) -> 'UnifiedPipeline':
         """Rule-based extraction"""
-        self._extractors.append(RuleExtractor(model=model))
+        self._extractors.append(
+            RuleExtractor(model=model, auto_download_model=auto_download_model)
+        )
         return self
 
     # ==================== Stages =====================================

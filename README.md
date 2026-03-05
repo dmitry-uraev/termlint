@@ -47,3 +47,13 @@ datefmt = "%Y-%m-%d %H:%M:%S"
 max_bytes = 10485760
 backup_count = 5
 ```
+
+spaCy model download is disabled by default during lint runs. Configure extraction like:
+
+```toml
+[tool.termlint.extraction]
+extractors = ["rule"]
+rules = { model = "ru_core_news_sm", auto_download_model = false }
+```
+
+Set `auto_download_model = true` only if you explicitly want runtime model download (not recommended for CI).

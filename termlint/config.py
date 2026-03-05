@@ -23,7 +23,12 @@ class QualityGates(BaseModel):
 
 class ExtractionConfig(BaseModel):
     extractors: List[str] = Field(default_factory=lambda: ["rule"])
-    rules: Dict[str, Any] = Field(default_factory=lambda: {"model": "ru_core_news_sm"})
+    rules: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            "model": "ru_core_news_sm",
+            "auto_download_model": False,
+        }
+    )
 
 
 class VerifierConfig(BaseModel):

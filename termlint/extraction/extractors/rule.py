@@ -9,9 +9,6 @@ try:
 except ImportError:
     SPAcy_AVAILABLE = False
 
-
-import subprocess
-import sys
 from typing import AsyncIterator, Dict, List, Optional
 
 from termlint.core.models import TextEntity
@@ -45,32 +42,36 @@ class RuleExtractor(ConfigurableExtractor):
         self,
         patterns: Optional[List[List[Dict]]] = DEFAULT_PATTERNS,
         model: Optional[str] = DEFAULT_MODEL,
+        auto_download_model: bool = False,
         **kwargs
     ):
         if not SPAcy_AVAILABLE:
-            raise ImportError("spaCy is required for RuleExtractor. Install: pip install termlint[rule].")
-        super().__init__(patterns=patterns, model=model, **kwargs)
+            raise ImportError("spaCy is required for RuleExtractor. Install: pip install 'termlint[base]'.")
+        super().__init__(patterns=patterns, model=model, auto_download_model=auto_download_model, **kwargs)
 
         self.model_name = self.config.get("model", DEFAULT_MODEL)
+        self.auto_download_model = bool(self.config.get("auto_download_model", False))
         try:
             self.nlp = spacy.load(self.model_name)
         except OSError:
-            logger.warning(f"spaCy model '{self.model_name}' not found. Attempting to download...")
-            self._download_model(self.model_name)
-            self.nlp = spacy.load(self.model_name)
-            logger.info(f"spaCy model '{self.model_name}' loaded successfully after download.")
+            if self.auto_download_model:
+                logger.warning(f"spaCy model '{self.model_name}' not found. Attempting to download...")
+                self._download_model(self.model_name)
+                self.nlp = spacy.load(self.model_name)
+                logger.info(f"spaCy model '{self.model_name}' loaded successfully after download.")
+            else:
+                raise RuntimeError(
+                    f"spaCy model '{self.model_name}' is not installed. "
+                    f"Install it manually: python -m spacy download {self.model_name}. "
+                    "Or enable auto download via RuleExtractor(auto_download_model=True)."
+                ) from None
 
         self.matcher = self._setup_matcher()
 
     def _download_model(self, model_name: str):
         """Download spaCy model if not already installed."""
-        try:
-            from spacy.cli.download import download as spacy_download
-            spacy_download(model_name)
-        except ImportError as e:
-            subprocess.check_call([
-                sys.executable, "-m", "spacy", "download", model_name
-            ])
+        from spacy.cli.download import download as spacy_download
+        spacy_download(model_name)
 
     def _setup_matcher(self) -> Matcher:
         matcher = Matcher(self.nlp.vocab)
