@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List
 
 from termlint.core.models import Report
+from termlint.utils import get_termlint_version
 
 
 class JSONExporter:
@@ -33,7 +34,7 @@ class JSONExporter:
             "metadata": {
                 "report_type": report.report_type.value,
                 "timestamp": datetime.datetime.now().isoformat(),
-                "termlint_version": "0.1.0", # TODO: pyproject.toml
+                "termlint_version": get_termlint_version(),
             },
             "data": report.to_dict()
         }
