@@ -86,7 +86,7 @@ def verify(
         if output_dir:
             config.output_dir = output_dir
 
-        pipeline = await UnifiedPipeline.from_config(config)
+        pipeline = await build_pipeline_or_exit(config)
         file_list = normalize_files(files)
 
         with Progress(
@@ -111,8 +111,9 @@ def verify(
                         completed=max(step - 1, 0),
                     )
 
-                result = await pipeline.run_and_collect(
-                    file_path.read_text(encoding='utf-8'),
+                result = await run_pipeline_for_file_or_exit(
+                    pipeline,
+                    file_path,
                     progress_callback=on_step
                 )
                 progress.update(current_task, completed=progress.tasks[current_task].total, description=f"✅ {file_path.name}")
@@ -120,7 +121,7 @@ def verify(
 
                 if not result.is_ok:
                     console.print(f"[red]❌ Failed[/red] {file_path}: {result.errors}")
-                    raise click.Abort()
+                    raise click.exceptions.Exit(3)
 
                 reports = result.value
                 all_reports.extend(reports)
@@ -156,7 +157,7 @@ def extract(
         config.reports.include = [ReportType.EXTRACTION]
         config.pipeline.stages = ["extract", "report"]
 
-        pipeline = await UnifiedPipeline.from_config(config)
+        pipeline = await build_pipeline_or_exit(config)
         file_list = normalize_files(files)
 
         with Progress(
@@ -180,8 +181,9 @@ def extract(
                         completed=max(step - 1, 0),
                     )
 
-                result = await pipeline.run_and_collect(
-                    file_path.read_text(encoding='utf-8'),
+                result = await run_pipeline_for_file_or_exit(
+                    pipeline,
+                    file_path,
                     progress_callback=on_step
                 )
                 progress.update(current_task, completed=progress.tasks[current_task].total, description=f"✅ {file_path.name}")
@@ -189,7 +191,7 @@ def extract(
 
                 if not result.is_ok:
                     console.print(f"[red]❌ {result.errors}[/red]")
-                    raise click.Abort()
+                    raise click.exceptions.Exit(3)
 
                 extraction_report = next((r for r in result.value if isinstance(r, Report) and r.report_type == "extraction"), None)
                 if extraction_report:
@@ -215,7 +217,7 @@ def ci(
 
         failed_files = []
 
-        pipeline = await UnifiedPipeline.from_config(config)
+        pipeline = await build_pipeline_or_exit(config)
         file_list = normalize_files(files)
 
         with Progress(
@@ -239,8 +241,9 @@ def ci(
                         completed=max(step - 1, 0),
                     )
 
-                result = await pipeline.run_and_collect(
-                    file_path.read_text(encoding='utf-8'),
+                result = await run_pipeline_for_file_or_exit(
+                    pipeline,
+                    file_path,
                     progress_callback=on_step
                 )
                 progress.update(current_task, completed=progress.tasks[current_task].total, description=f"✅ {file_path.name}")
@@ -286,7 +289,7 @@ def validate(ctx: dict):
         console.print("❌ [red bold]Configuration issues:[/red bold]")
         for issue in issues:
             console.print(f"  • {issue}")
-        raise click.Abort(3)
+        raise click.exceptions.Exit(3)
 
     console.print("✅ [green bold]Configuration is valid![/green bold]")
     console.print(f"📋 Pipeline: {', '.join(config.pipeline.stages)}")
@@ -323,6 +326,39 @@ def resolve_logging_level(
 def level_name_to_int(level_name: str) -> int:
     """Convert standard logging level name to numeric value."""
     return getattr(logging, level_name.upper(), logging.WARNING)
+
+
+async def build_pipeline_or_exit(config: TermlintConfig) -> UnifiedPipeline:
+    """Build pipeline and convert setup exceptions to clean CLI errors."""
+    try:
+        return await UnifiedPipeline.from_config(config)
+    except (ValueError, FileNotFoundError) as exc:
+        console.print(f"[red]❌ Configuration error[/red]: {exc}")
+        raise click.exceptions.Exit(2) from exc
+    except NotImplementedError as exc:
+        console.print(f"[red]❌ Unsupported configuration[/red]: {exc}")
+        raise click.exceptions.Exit(2) from exc
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.exception("Unexpected failure while building pipeline")
+        console.print("[red]❌ Internal error while preparing pipeline[/red]")
+        raise click.exceptions.Exit(3) from exc
+
+
+async def run_pipeline_for_file_or_exit(
+    pipeline: UnifiedPipeline,
+    file_path: Path,
+    progress_callback,
+):
+    """Run pipeline for one file and convert runtime exceptions to clean CLI errors."""
+    try:
+        return await pipeline.run_and_collect(
+            file_path.read_text(encoding='utf-8'),
+            progress_callback=progress_callback
+        )
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.exception("Unexpected failure while processing file '%s'", file_path)
+        console.print(f"[red]❌ Internal error while processing[/red] {file_path}")
+        raise click.exceptions.Exit(3) from exc
 
 
 if __name__ == "__main__":

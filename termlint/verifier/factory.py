@@ -20,7 +20,7 @@ class VerifierFactory:
             raise ValueError("Verification requires a glossary source. Pass --source or set [tool.termlint.verifier.source].")
 
         if not config.source.exists():
-            raise FileNotFoundError(f"Glossary not found: {config.source}")
+            raise ValueError(f"Glossary not found: {config.source}")
 
         logger.info(f"Initializing source: {config.source}")
         source_suffix = config.source.suffix.lower()
@@ -31,7 +31,11 @@ class VerifierFactory:
         else:
             raise ValueError(f"Unknown source format: {source_suffix}")
 
-        await source.initialize()
+        source_init_result = await source.initialize()
+        if not source_init_result.is_ok:
+            raise ValueError(
+                f"Failed to initialize glossary source '{config.source}': {'; '.join(source_init_result.errors)}"
+            )
 
         params = config.get_effective_params(config.type)
 
