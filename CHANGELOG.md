@@ -7,6 +7,18 @@ The format is based on Keep a Changelog, and this project follows
 
 ## [Unreleased]
 
+## [0.1.0a2] - 2026-03-06
+
+### Added
+- `project.urls` metadata (`Homepage`, `Repository`, `Issues`, `Changelog`) for PyPI project links.
+- README badges for PyPI version, license, Python versions, and CI workflow status.
+
+### Changed
+- README Quick Start updated to installation-independent flow (`input.txt` instead of repository sample paths).
+- README sample content switched to English-focused defaults (`en_core_web_sm` in install/config examples).
+- README now explicitly documents `pip install --pre "termlint[base]"` for alpha installs.
+- Language support section clarified: tested RU/EN models, other spaCy models marked experimental.
+
 ## [0.1.0a1] - 2026-03-05
 
 ### Summary

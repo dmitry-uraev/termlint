@@ -1,6 +1,6 @@
 [project]
 name = "termlint"
-version = "0.1.0a1"
+version = "0.1.0a2"
 description = "Terminology linter for a given subject area text"
 readme = "README.md"
 license = "MIT"
@@ -13,6 +13,7 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Text Processing",
 ]
+urls = { Homepage = "https://github.com/dmitry-uraev/termlint", Repository = "https://github.com/dmitry-uraev/termlint", Issues = "https://github.com/dmitry-uraev/termlint/issues", Changelog = "https://github.com/dmitry-uraev/termlint/blob/main/CHANGELOG.md" }
 packages = [{ include = "termlint" }]
 
 requires-python = "==3.12.*"

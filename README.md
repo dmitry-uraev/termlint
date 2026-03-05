@@ -1,5 +1,10 @@
 # termlint
 
+[![PyPI version](https://img.shields.io/pypi/v/termlint)](https://pypi.org/project/termlint/)
+![License](https://img.shields.io/pypi/l/termlint)
+![Python versions](https://img.shields.io/pypi/pyversions/termlint)
+[![CI](https://github.com/dmitry-uraev/termlint/actions/workflows/termlint_ci.yaml/badge.svg)](https://github.com/dmitry-uraev/termlint/actions/workflows/termlint_ci.yaml)
+
 Terminology linter for projects — extracts terms from code/docs and verifies coverage against your glossary/ontology.
 
 ## What Is termlint?
