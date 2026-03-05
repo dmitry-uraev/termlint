@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from enum import IntEnum
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -25,6 +26,13 @@ from termlint.utils.logger import get_child_logger, setup_root_logger
 logger = get_child_logger("cli")
 console = Console()
 pass_config = click.make_pass_decorator(dict, ensure=True)
+
+
+class ExitCode(IntEnum):
+    OK = 0
+    QUALITY_GATE_FAIL = 1
+    USAGE_OR_CONFIG_ERROR = 2
+    INTERNAL_PIPELINE_ERROR = 3
 
 
 @click.group()
@@ -56,7 +64,8 @@ def cli(
     try:
         config = TermlintConfig.from_pyproject(config_path or Path("pyproject.toml"))
     except Exception as exc:
-        raise click.ClickException(f"Failed to load config: {exc}") from exc
+        click.echo(f"Error: Failed to load config: {exc}", err=True)
+        raise click.exceptions.Exit(ExitCode.USAGE_OR_CONFIG_ERROR) from exc
     setup_root_logger(
         level=resolve_logging_level(
             config.logging.level,
@@ -137,7 +146,7 @@ def verify(
 
                 if not result.is_ok:
                     console.print(f"[red]❌ Failed[/red] {file_path}: {result.errors}")
-                    raise click.exceptions.Exit(3)
+                    raise click.exceptions.Exit(ExitCode.INTERNAL_PIPELINE_ERROR)
 
                 reports = result.value
                 all_reports.extend(reports)
@@ -207,7 +216,7 @@ def extract(
 
                 if not result.is_ok:
                     console.print(f"[red]❌ {result.errors}[/red]")
-                    raise click.exceptions.Exit(3)
+                    raise click.exceptions.Exit(ExitCode.INTERNAL_PIPELINE_ERROR)
 
                 extraction_report = next((r for r in result.value if isinstance(r, Report) and r.report_type == "extraction"), None)
                 if extraction_report:
@@ -266,7 +275,7 @@ def ci(
                 progress.advance(overall_task, 1)
                 if not result.is_ok:
                     console.print(f"[red]❌ Pipeline error[/red]: {result.errors}")
-                    raise click.exceptions.Exit(3)
+                    raise click.exceptions.Exit(ExitCode.INTERNAL_PIPELINE_ERROR)
 
                 quality_report = next((r for r in result.value if isinstance(r, Report) and r.report_type == ReportType.QUALITY_GATE), None)
                 if quality_report and not quality_report.quality_pass:
@@ -275,7 +284,7 @@ def ci(
 
         if failed_files:
             console.print(f"\n💥 [red bold]{len(failed_files)}/{len(file_list)} files failed quality gates[/red bold]")
-            raise click.exceptions.Exit(1)
+            raise click.exceptions.Exit(ExitCode.QUALITY_GATE_FAIL)
 
     asyncio.run(run_pipeline())
 
@@ -305,7 +314,7 @@ def validate(ctx: dict):
         console.print("❌ [red bold]Configuration issues:[/red bold]")
         for issue in issues:
             console.print(f"  • {issue}")
-        raise click.exceptions.Exit(3)
+        raise click.exceptions.Exit(ExitCode.USAGE_OR_CONFIG_ERROR)
 
     console.print("✅ [green bold]Configuration is valid![/green bold]")
     console.print(f"📋 Pipeline: {', '.join(config.pipeline.stages)}")
@@ -350,14 +359,14 @@ async def build_pipeline_or_exit(config: TermlintConfig) -> UnifiedPipeline:
         return await UnifiedPipeline.from_config(config)
     except (ValueError, FileNotFoundError) as exc:
         console.print(f"[red]❌ Configuration error[/red]: {exc}")
-        raise click.exceptions.Exit(2) from exc
+        raise click.exceptions.Exit(ExitCode.USAGE_OR_CONFIG_ERROR) from exc
     except NotImplementedError as exc:
         console.print(f"[red]❌ Unsupported configuration[/red]: {exc}")
-        raise click.exceptions.Exit(2) from exc
+        raise click.exceptions.Exit(ExitCode.USAGE_OR_CONFIG_ERROR) from exc
     except Exception as exc:  # pragma: no cover - defensive fallback
         logger.exception("Unexpected failure while building pipeline")
         console.print("[red]❌ Internal error while preparing pipeline[/red]")
-        raise click.exceptions.Exit(3) from exc
+        raise click.exceptions.Exit(ExitCode.INTERNAL_PIPELINE_ERROR) from exc
 
 
 async def run_pipeline_for_file_or_exit(
@@ -374,7 +383,7 @@ async def run_pipeline_for_file_or_exit(
     except Exception as exc:  # pragma: no cover - defensive fallback
         logger.exception("Unexpected failure while processing file '%s'", file_path)
         console.print(f"[red]❌ Internal error while processing[/red] {file_path}")
-        raise click.exceptions.Exit(3) from exc
+        raise click.exceptions.Exit(ExitCode.INTERNAL_PIPELINE_ERROR) from exc
 
 
 if __name__ == "__main__":

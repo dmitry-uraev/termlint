@@ -58,3 +58,12 @@ rules = { model = "ru_core_news_sm", auto_download_model = false }
 ```
 
 Set `auto_download_model = true` only if you explicitly want runtime model download (not recommended for CI).
+
+## Exit Codes
+
+`termlint` uses a stable exit code contract:
+
+- `0`: successful run
+- `1`: quality gate failed (`ci` command)
+- `2`: usage/configuration error (invalid options/config/source)
+- `3`: internal pipeline/runtime error
