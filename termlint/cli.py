@@ -71,7 +71,10 @@ def cli(
 ):
     """Terminology linter for docs"""
     try:
-        config = TermlintConfig.from_pyproject(config_path or Path("pyproject.toml"))
+        config = TermlintConfig.from_discovery(
+            explicit_config=config_path,
+            start_dir=Path.cwd(),
+        )
     except Exception as exc:
         click.echo(f"Error: Failed to load config: {exc}", err=True)
         raise click.exceptions.Exit(ExitCode.USAGE_OR_CONFIG_ERROR) from exc

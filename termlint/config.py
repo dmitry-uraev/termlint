@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import tomllib
 from typing import Any, Dict, List, Literal, Optional
@@ -88,31 +89,107 @@ class TermlintConfig(BaseModel):
     pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
+    @staticmethod
+    def _extract_termlint_section(path: Path) -> Dict[str, Any]:
+        with path.open("rb") as f:
+            raw = tomllib.load(f)
+        # Project config: [tool.termlint]
+        tool_section = raw.get("tool", {})
+        if isinstance(tool_section, dict) and isinstance(tool_section.get("termlint"), dict):
+            return tool_section["termlint"]
+        # User config: [termlint] (supported for ~/.termlint/config.toml style)
+        if isinstance(raw.get("termlint"), dict):
+            return raw["termlint"]
+        return {}
+
+    @classmethod
+    def _from_raw_data(cls, raw_data: Dict[str, Any]) -> "TermlintConfig":
+        data = {
+            "output_dir": Path(raw_data.get("output_dir", "reports/")),
+            "quality_gates": raw_data.get("quality_gates", {}),
+            "extraction": raw_data.get("extraction", {}),
+            "verifier": raw_data.get("verifier", {}),
+            "reports": raw_data.get("reports", {}),
+            "pipeline": raw_data.get("pipeline", {}),
+            "logging": raw_data.get("logging", {}),
+        }
+
+        config = cls(**data)
+        if config.verifier.type == "fuzzy":
+            config.verifier.fuzzy = {**VerifierConfig.get_fuzzy_defaults(), **config.verifier.fuzzy}
+        return config
+
     @classmethod
     def from_pyproject(cls, pyproject_path: Path | str = "pyproject.toml") -> 'TermlintConfig':
         path = Path(pyproject_path)
         try:
-            with open(path, "rb") as f:
-                raw_data = tomllib.load(f).get("tool", {}).get("termlint", {})
-
-            data = {
-                "output_dir": Path(raw_data.get("output_dir", "reports/")),
-                "quality_gates": raw_data.get("quality_gates", {}),
-                "extraction": raw_data.get("extraction", {}),
-                "verifier": raw_data.get("verifier", {}),
-                "reports": raw_data.get("reports", {}),
-                "pipeline": raw_data.get("pipeline", {}),
-                "logging": raw_data.get("logging", {}),
-            }
-
-            config = cls(**data)
-
-            if config.verifier.type == "fuzzy":
-                config.verifier.fuzzy = {**VerifierConfig.get_fuzzy_defaults(), **config.verifier.fuzzy}
-
-            return config
-
+            return cls._from_raw_data(cls._extract_termlint_section(path))
         except FileNotFoundError:
             if path != Path("pyproject.toml"):
                 raise
             return cls()
+
+    @classmethod
+    def discover_config_path(
+        cls,
+        explicit_config: Optional[Path | str] = None,
+        start_dir: Path | str | None = None,
+    ) -> Optional[Path]:
+        if explicit_config:
+            return Path(explicit_config)
+
+        # 1) nearest project pyproject.toml with [tool.termlint]
+        project_candidate = cls.find_project_pyproject(start_dir=start_dir)
+        if project_candidate:
+            return project_candidate
+
+        # 2) user-level config files
+        for candidate in cls.user_config_candidates():
+            if candidate.exists():
+                return candidate
+        return None
+
+    @classmethod
+    def find_project_pyproject(cls, start_dir: Path | str | None = None) -> Optional[Path]:
+        current = Path(start_dir) if start_dir else Path.cwd()
+        current = current.resolve()
+        for directory in (current, *current.parents):
+            candidate = directory / "pyproject.toml"
+            if not candidate.exists():
+                continue
+            try:
+                raw_section = cls._extract_termlint_section(candidate)
+            except Exception:
+                continue
+            if raw_section:
+                return candidate
+        return None
+
+    @classmethod
+    def user_config_candidates(cls) -> List[Path]:
+        candidates: List[Path] = []
+        home = Path.home()
+        xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
+        appdata = os.environ.get("APPDATA")
+
+        if xdg_config_home:
+            candidates.append(Path(xdg_config_home) / "termlint" / "config.toml")
+        candidates.append(home / ".config" / "termlint" / "config.toml")
+        if appdata:
+            candidates.append(Path(appdata) / "termlint" / "config.toml")
+        candidates.append(home / ".termlint" / "config.toml")
+        return candidates
+
+    @classmethod
+    def from_discovery(
+        cls,
+        explicit_config: Optional[Path | str] = None,
+        start_dir: Path | str | None = None,
+    ) -> "TermlintConfig":
+        config_path = cls.discover_config_path(
+            explicit_config=explicit_config,
+            start_dir=start_dir,
+        )
+        if config_path is None:
+            return cls()
+        return cls.from_pyproject(config_path)
