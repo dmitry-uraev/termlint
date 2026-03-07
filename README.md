@@ -47,7 +47,8 @@ Planned / not implemented yet:
 | Dimension               | Current support                                                            |
 | ----------------------- | -------------------------------------------------------------------------- |
 | OS                      | Linux, macOS, Windows (CLI, JSON workflows)                                |
-| Python                  | `3.12.x`                                                                   |
+| Python (core)           | `>=3.10`                                                                      |
+| Python (rule extraction)| `>=3.10,<3.14` with `termlint[base]` (spaCy extra)                           |
 | Required extras         | `termlint[base]`                                                           |
 | Core deps from extras   | `spacy`, `rapidfuzz`                                                       |
 | Default spaCy model     | `ru_core_news_sm`                                                          |
@@ -58,6 +59,8 @@ Planned / not implemented yet:
 ### Language Support Policy
 
 - `termlint` pipeline is language-agnostic in design, but extraction quality depends on the selected spaCy model.
+- Core CLI/report/glossary functionality supports Python `>=3.10`.
+- Rule extraction (`RuleExtractor`) depends on spaCy and is currently supported for Python `<3.14`.
 - Officially tested in alpha:
   - Russian with `ru_core_news_sm`
   - English with `en_core_web_sm`
@@ -204,7 +207,7 @@ termlint glossary merge \
 
 ```bash
 poetry config virtualenvs.in-project true --local
-poetry env use python3.12
+poetry env use python3.13
 poetry install --with dev --extras "base"
 ```
 

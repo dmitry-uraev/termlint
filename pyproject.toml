@@ -9,24 +9,28 @@ keywords = ["nlp", "terminology", "linting", "ontology"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Text Processing",
 ]
 urls = { Homepage = "https://github.com/dmitry-uraev/termlint", Repository = "https://github.com/dmitry-uraev/termlint", Issues = "https://github.com/dmitry-uraev/termlint/issues", Changelog = "https://github.com/dmitry-uraev/termlint/blob/main/CHANGELOG.md" }
 packages = [{ include = "termlint" }]
 
-requires-python = "==3.12.*"
+requires-python = ">=3.10"
 dependencies = [
     "click>=8.3.1",
     "pydantic>=2.12.5",
     "rich>=13.0",
-    "numpy==1.26.4",
+    "tomli>=2.0.1; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
 base = [
-    "spacy>=3.7.2,<3.7.6",
+    "spacy>=3.8.11,<4; python_version < '3.14'",
     "rapidfuzz>=3.14.3"
 ]
 ml = [
