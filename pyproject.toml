@@ -20,7 +20,7 @@ classifiers = [
 urls = { Homepage = "https://github.com/dmitry-uraev/termlint", Repository = "https://github.com/dmitry-uraev/termlint", Issues = "https://github.com/dmitry-uraev/termlint/issues", Changelog = "https://github.com/dmitry-uraev/termlint/blob/main/CHANGELOG.md" }
 packages = [{ include = "termlint" }]
 
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.15"
 dependencies = [
     "click>=8.3.1",
     "pydantic>=2.12.5",
@@ -30,7 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 base = [
-    "spacy>=3.8.11,<4; python_version < '3.14'",
+    "spacy>=3.8.11,<4",
     "rapidfuzz>=3.14.3"
 ]
 ml = [

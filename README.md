@@ -47,8 +47,8 @@ Planned / not implemented yet:
 | Dimension               | Current support                                                            |
 | ----------------------- | -------------------------------------------------------------------------- |
 | OS                      | Linux, macOS, Windows (CLI, JSON workflows)                                |
-| Python (core)           | `>=3.10`                                                                    |
-| Python (rule extraction)| `>=3.10,<3.14` with `termlint[base]` (spaCy extra)                         |
+| Python (core)           | `>=3.10,<3.15`                                                               |
+| Python (rule extraction)| `>=3.10,<3.15` with `termlint[base]` (spaCy extra)                          |
 | Required extras         | `termlint[base]`                                                           |
 | Core deps from extras   | `spacy`, `rapidfuzz`                                                       |
 | Default spaCy model     | `ru_core_news_sm`                                                          |
