@@ -8,7 +8,7 @@ from termlint.core.models import MatchResult, QualityConfig, Report, ReportConfi
 from termlint.core.stages import ProcessingStage
 from termlint.core.types import MatchResultStream, Result, TextEntityStream
 
-from termlint.extraction import NormalizationStage, ParallelStage, RuleExtractor, BaseExtractor
+from termlint.extraction import NormalizationStage, ParallelStage, BaseExtractor
 from termlint.verifier import FuzzyVerificationStage, VerifierFactory
 from termlint.reporter import ReportStage
 
@@ -74,6 +74,8 @@ class UnifiedPipeline:
         auto_download_model: bool = False
     ) -> 'UnifiedPipeline':
         """Rule-based extraction"""
+        from termlint.extraction.extractors.rule import RuleExtractor
+
         self._extractors.append(
             RuleExtractor(model=model, auto_download_model=auto_download_model)
         )
@@ -216,7 +218,7 @@ async def demo():
 
     # Pipeline without reporting ---------------------------------------------
     # result = await (pipeline()
-    #     .extractors(RuleExtractor(model='ru_core_news_sm'))
+    #     .with_rules(model='ru_core_news_sm')
     #     # .normalize()
     #     .verify(fuzzy_stage)
     #     .run_and_collect(text))
@@ -230,7 +232,7 @@ async def demo():
 
     # Pipeline with reporting ------------------------------------------------
     result = await (pipeline()
-                    .extractors(RuleExtractor(model='ru_core_news_sm'))
+                    .with_rules(model='ru_core_news_sm')
                     .normalize()
                     .verify(fuzzy_stage)
                     .report(ReportConfig(include=[ReportType.EXTRACTION, ReportType.PROCESSING, ReportType.VERIFICATION, ReportType.ONTOLOGY_UPDATE, ReportType.QUALITY_GATE]))

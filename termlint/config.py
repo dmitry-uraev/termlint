@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Literal, Optional
 try:
     import tomllib
 except ModuleNotFoundError:  # Python < 3.11
-    import tomli as tomllib
+    import tomli as tomllib  # type: ignore[import-not-found]
 
 from pydantic import BaseModel, Field
 
