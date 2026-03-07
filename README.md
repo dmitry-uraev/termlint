@@ -47,7 +47,8 @@ Planned / not implemented yet:
 | Dimension               | Current support                                                            |
 | ----------------------- | -------------------------------------------------------------------------- |
 | OS                      | Linux, macOS, Windows (CLI, JSON workflows)                                |
-| Python                  | `3.12.x`                                                                   |
+| Python (core)           | `>=3.10`                                                                    |
+| Python (rule extraction)| `>=3.10,<3.14` with `termlint[base]` (spaCy extra)                         |
 | Required extras         | `termlint[base]`                                                           |
 | Core deps from extras   | `spacy`, `rapidfuzz`                                                       |
 | Default spaCy model     | `ru_core_news_sm`                                                          |
@@ -204,7 +205,7 @@ termlint glossary merge \
 
 ```bash
 poetry config virtualenvs.in-project true --local
-poetry env use python3.12
+poetry env use python3.13
 poetry install --with dev --extras "base"
 ```
 
