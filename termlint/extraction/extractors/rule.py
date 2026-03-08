@@ -9,7 +9,7 @@ try:
 except ImportError:
     SPAcy_AVAILABLE = False
 
-from typing import AsyncIterator, Dict, List, Optional
+from typing import AsyncIterator, Dict, List
 
 from termlint.core.models import TextEntity
 from termlint.extraction.extractors.base import ConfigurableExtractor
@@ -40,8 +40,8 @@ class RuleExtractor(ConfigurableExtractor):
 
     def __init__(
         self,
-        patterns: Optional[List[List[Dict]]] = DEFAULT_PATTERNS,
-        model: Optional[str] = DEFAULT_MODEL,
+        patterns: List[List[Dict]] = DEFAULT_PATTERNS,
+        model: str = DEFAULT_MODEL,
         auto_download_model: bool = False,
         **kwargs
     ):
@@ -117,7 +117,7 @@ async def example_main():
     """Example usage of RuleExtractor"""
     text = "Natural language processing enables computers to understand human language."
 
-    extractor = RuleExtractor()
+    extractor = RuleExtractor(auto_download_model=True)
     async for entity in extractor(text):
         print(entity)
 

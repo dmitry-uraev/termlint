@@ -43,7 +43,7 @@ class ParallelStage:
     async def _run_extractor(self, extractor: BaseExtractor, text: str) -> List[TextEntity]:
         """Run an extractor and return a list of extracted entities."""
         entities = []
-        # TODO: pylance, why?
+        # TODO: pylance, why?, make public
         async for entity in extractor._extract(text): #type:ignore
             entities.append(entity)
         return entities

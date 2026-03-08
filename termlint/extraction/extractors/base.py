@@ -36,10 +36,12 @@ class BaseExtractor(ABC):
         return entity
 
     @abstractmethod
+    # TODO: make public
     async def _extract(self, text: str) -> AsyncIterator[TextEntity]:
         ...
 
 
+# TODO: makes no sense, remove from RuleExtractor and delete after public extract
 class ConfigurableExtractor(BaseExtractor):
     """
     Base class for configurable extractors.
