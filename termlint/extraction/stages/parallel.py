@@ -44,7 +44,7 @@ class ParallelStage:
         """Run an extractor and return a list of extracted entities."""
         entities = []
         # TODO: pylance, why?
-        async for entity in extractor._extract(text):
+        async for entity in extractor._extract(text): #type:ignore
             entities.append(entity)
         return entities
 
