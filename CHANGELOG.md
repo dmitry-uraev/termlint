@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog, and this project follows
 [PEP 440](https://peps.python.org/pep-0440/) for Python package versions.
 
-## [Unreleased]
+## [0.1.0a3] - 2026-03-09
 
 ### Added
 - New configurable `CValueExtractor` for term extraction.
