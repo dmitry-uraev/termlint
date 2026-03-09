@@ -3,6 +3,7 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from termlint.cli import cli
+from termlint.config import VerifierConfig
 from termlint.core.models import Report, ReportType
 from termlint.core.types import Result
 
@@ -90,3 +91,83 @@ def test_verify_fail_on_quality_gate_sets_exit_code_1(monkeypatch):
         )
 
     assert result.exit_code == 1, result.output
+
+
+def test_verify_quickstart_works_without_config(monkeypatch):
+    runner = CliRunner()
+    called = {"checked": False}
+
+    async def fake_build_pipeline_or_exit(config):
+        assert config.pipeline.stages == ["extract", "normalize", "verify", "report"]
+        assert config.extraction.extractors == ["rule", "cvalue"]
+        assert config.extraction.rules == {
+            "model": "en_core_web_sm",
+            "auto_download_model": False,
+        }
+        assert config.extraction.cvalue["model"] == "en_core_web_sm"
+        assert config.reports.include == ["verification", "quality_gate", "ontology_update"]
+        assert config.verifier.source == Path("glossary.json")
+        assert config.verifier.type == "fuzzy"
+        assert config.verifier.fuzzy == {"threshold": 85}
+        assert config.verifier.get_effective_params("fuzzy") == {
+            **VerifierConfig.get_fuzzy_defaults(),
+            "threshold": 85,
+        }
+        called["checked"] = True
+        return object()
+
+    async def fake_run_pipeline_for_file_or_exit(pipeline, file_path: Path, progress_callback):
+        assert file_path == Path("input.txt")
+        reports = [
+            Report(
+                report_type=ReportType.VERIFICATION,
+                total_items=6,
+                processed_items=2,
+                coverage_pct=33.3,
+                exit_code=0,
+            ),
+            Report(
+                report_type=ReportType.QUALITY_GATE,
+                total_items=1,
+                processed_items=1,
+                quality_pass=False,
+                exit_code=0,
+            ),
+            Report(
+                report_type=ReportType.ONTOLOGY_UPDATE,
+                total_items=0,
+                processed_items=0,
+                exit_code=0,
+            ),
+        ]
+        return Result.ok(reports)
+
+    monkeypatch.setattr("termlint.cli.build_pipeline_or_exit", fake_build_pipeline_or_exit)
+    monkeypatch.setattr("termlint.cli.run_pipeline_for_file_or_exit", fake_run_pipeline_for_file_or_exit)
+
+    with runner.isolated_filesystem():
+        Path("input.txt").write_text(
+            "Artificial intelligence and machine learning are used in data analytics.",
+            encoding="utf-8",
+        )
+        Path("glossary.json").write_text(
+            '[{"id":"ml:001","label":"machine learning","synonyms":["ML"]}]',
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "verify",
+                "input.txt",
+                "--source",
+                "glossary.json",
+                "--verifier",
+                "fuzzy",
+                "--threshold",
+                "85",
+            ],
+        )
+
+    assert result.exit_code == 0, result.output
+    assert called["checked"] is True

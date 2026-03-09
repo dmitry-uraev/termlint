@@ -20,6 +20,11 @@ from termlint.extraction.extractors.cvalue_support.config import (
     DEFAULT_USE_LING_FILTER,
 )
 
+from termlint.utils.logger import get_child_logger
+
+
+logger = get_child_logger('Config')
+
 
 class QualityGates(BaseModel):
     min_coverage: float = 90.0
@@ -39,7 +44,7 @@ class ExtractionConfig(BaseModel):
     extractors: List[str] = Field(default_factory=lambda: ["rule", "cvalue"])
     rules: Dict[str, Any] = Field(
         default_factory=lambda: {
-            "model": "ru_core_news_sm",
+            "model": "en_core_web_sm",
             "auto_download_model": False,
         }
     )
@@ -87,12 +92,15 @@ class VerifierConfig(BaseModel):
 
 
 class ReportsConfig(BaseModel):
-    include: List[str] = Field(default_factory=lambda: ["verification", "quality_gate"])
+    include: List[str] = Field(default_factory=lambda: ["verification", "quality_gate", "ontology_update"])
     exporters: List[str] = ["json"]
 
 
 class PipelineConfig(BaseModel):
-    stages: List[str] = Field(default_factory=list, validate_default=True)
+    stages: List[str] = Field(
+        default_factory=lambda: ["extract", "normalize", "verify", "report"],
+        validate_default=True,
+    )
 
 
 class LoggingConfig(BaseModel):
@@ -216,4 +224,6 @@ class TermlintConfig(BaseModel):
         )
         if config_path is None:
             return cls()
+
+        logger.info(f"Using config from: {config_path}")
         return cls.from_pyproject(config_path)

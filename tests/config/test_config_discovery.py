@@ -64,3 +64,5 @@ def test_discovery_defaults_when_no_configs(tmp_path: Path):
     config = TermlintConfig.from_discovery(start_dir=tmp_path)
     assert config.logging.level == "WARNING"
     assert config.verifier.source is None
+    assert config.pipeline.stages == ["extract", "normalize", "verify", "report"]
+    assert config.reports.include == ["verification", "quality_gate", "ontology_update"]

@@ -18,6 +18,10 @@ def test_extraction_defaults_include_cvalue():
     config = TermlintConfig()
 
     assert config.extraction.extractors == ["rule", "cvalue"]
+    assert config.extraction.rules == {
+        "model": "en_core_web_sm",
+        "auto_download_model": False,
+    }
     assert config.extraction.cvalue == {
         "threshold": DEFAULT_THRESHOLD,
         "min_freq": DEFAULT_MIN_FREQ,
