@@ -5,97 +5,41 @@
 ![Python versions](https://img.shields.io/pypi/pyversions/termlint)
 [![CI](https://github.com/dmitry-uraev/termlint/actions/workflows/termlint_ci.yaml/badge.svg)](https://github.com/dmitry-uraev/termlint/actions/workflows/termlint_ci.yaml)
 
-Terminology linter for projects — extracts terms from code/docs and verifies coverage against your glossary/ontology.
-
-## What Is termlint?
-
-`termlint` is a CLI tool for terminology quality checks in text/documentation workflows.
-
-- extracts term candidates from text
-- verifies terms against your glossary (`exact`/`fuzzy`)
-- generates JSON reports (`verification`, `ontology_update`, `quality_gate`, `extraction`)
-- helps bootstrap and evolve glossaries (`glossary from-report`, `glossary merge`)
-
-> Concept
-
-```text
-Raw Text → Parallel Extractors → Async Pipeline → Glossary Match → Quality Report
-  ↓        (rules,cvalue,keybert)   (norm,filter,rank)     ↓
-TextEntityStream ────────────────────────→ Coverage 90%
-```
-
-Async functional pipeline with composable stages and universal TextEntity model.
+Terminology linter for projects. `termlint` extracts term candidates from text and checks them against your glossary or ontology.
 
 ## Alpha Status
 
 `termlint` is currently **alpha**.
 
-Implemented and supported now:
+Implemented now:
 - rule-based extraction (`RuleExtractor` / spaCy)
-- C-Value extraction module (`CValueExtractor`) with spaCy mode and heuristic fallback
+- C-Value extraction (`CValueExtractor`)
 - verification: `exact`, `fuzzy`
-- report export: JSON (`extraction`, `verification`, `ontology_update`, `quality_gate`)
+- JSON reports: `verification`, `ontology_update`, `quality_gate`, `extraction`
 - glossary tooling: `glossary from-report`, `glossary merge`
 
-Planned / not implemented yet:
-- extractor integration in config/CLI: `KeyBERT`
-- processing stages: `filter`, `rank`
-- verification stages: `semantic`, `ensemble`
-- exporters: HTML, JUnit
-
-### Latest Branch Changes (Unreleased)
-
-- Added `CValueExtractor` implementation under `termlint/extraction/extractors/`:
-  - modular candidate generation (`spaCy` + heuristic fallback)
-  - standalone C-Value scorer module
-  - tokenizer/config/type support modules
-- Added dedicated C-Value test suite:
-  - extractor behavior tests
-  - candidate generator tests
-  - scorer math tests
-- Updated extraction stage internals to silence typing noise for async extractor iteration.
-
-## Compatibility Matrix
-
-| Dimension                | Current support                                                            |
-| ------------------------ | -------------------------------------------------------------------------- |
-| OS                       | Linux, macOS, Windows (CLI, JSON workflows)                                |
-| Python (core)            | `>=3.10`                                                                   |
-| Python (rule extraction) | `>=3.10,<3.14` with `termlint[base]` (spaCy extra)                         |
-| Required extras          | `termlint[base]`                                                           |
-| Core deps from extras    | `spacy`, `rapidfuzz`                                                       |
-| Default spaCy model      | `ru_core_news_sm`                                                          |
-| Console/output language  | English-only CLI and report metadata                                       |
-| Tested text languages    | Russian (`ru_core_news_sm`), English (`en_core_web_sm`)                    |
-| Other languages          | Possible via `rules.model`, but not yet validated in the alpha test matrix |
-
-### Language Support Policy
-
-- `termlint` pipeline is language-agnostic in design, but extraction quality depends on the selected spaCy model.
-- Core CLI/report/glossary functionality supports Python `>=3.10`.
-- Rule extraction (`RuleExtractor`) depends on spaCy and is currently supported for Python `<3.14`.
-- Officially tested in alpha:
-  - Russian with `ru_core_news_sm`
-  - English with `en_core_web_sm`
-- Other spaCy language models can be used via `[tool.termlint.extraction.rules].model`, but should be treated as experimental until formally tested.
-- CLI messages and generated report metadata are in English.
+Current support is intentionally narrow:
+- Python `>=3.10`
+- spaCy-based extraction is currently supported on Python `<3.14`
+- officially tested with English and Russian spaCy models
+- other spaCy models may work, but should be treated as experimental in this alpha stage
 
 ## Quick Start
 
 1. Install:
 
 ```bash
-# Recommended for CLI usage (isolated global tool)
+# Recommended for CLI usage
 pipx install "termlint[base]"
 
-# Alternative: project/venv install
+# Alternative: install into a project environment
 pip install --pre "termlint[base]"
 
-# Install spaCy model into the same environment
+# Install a spaCy model into the same environment
 python -m spacy download en_core_web_sm
 ```
 
-For `pipx`, install model inside the pipx environment:
+For `pipx`, install the model inside the pipx environment:
 
 ```bash
 pipx runpip termlint install en-core-web-sm
@@ -103,7 +47,7 @@ pipx runpip termlint install en-core-web-sm
 pipx runpip termlint install ru-core-news-sm
 ```
 
-2. Create a minimal glossary (`glossary.json`):
+2. Create a glossary (`glossary.json`):
 
 ```json
 [
@@ -112,7 +56,7 @@ pipx runpip termlint install ru-core-news-sm
 ]
 ```
 
-3. Create an input text file (`input.txt`):
+3. Create an input file (`input.txt`):
 
 ```text
 Artificial intelligence and machine learning are used in data analytics.
@@ -124,7 +68,7 @@ Artificial intelligence and machine learning are used in data analytics.
 termlint verify input.txt --source glossary.json --verifier fuzzy --threshold 85
 ```
 
-5. Expected output (example):
+Example output:
 
 ```text
 Files     ... 100%
@@ -139,25 +83,32 @@ Generated reports:
 - `reports/quality_gate.json`
 
 Exit behavior:
-- `verify` exits `0` on successful run by default (even if quality gate would fail in CI mode)
+- `verify` exits `0` on a successful run by default, even if the quality gate would fail in CI mode
 - `verify --fail-on-quality-gate` exits `1` when quality gates fail
-- full contract is listed in [Exit Codes](#exit-codes)
 
-## Glossary JSON Schema
+## Configuration
 
-`termlint` expects a glossary file as a JSON array of objects.
+Project configuration lives in `pyproject.toml` under `[tool.termlint]`.
 
-Required fields per entity:
-- `id` (`string`)
-- `label` (`string`)
+Example:
 
-Optional fields:
-- `synonyms` (`string[]`, default `[]`)
-- `relations` (`object<string, string[]>`, default `{}`)
-- `definition` (`string | null`)
-- `source` (`string | null`)
+```toml
+[tool.termlint.logging]
+level = "WARNING"
+log_file = "reports/termlint.log"
 
-Minimal valid example:
+[tool.termlint.extraction]
+extractors = ["rule", "cvalue"]
+rules = { model = "en_core_web_sm", auto_download_model = false }
+cvalue = { threshold = 0.25, min_freq = 1, min_length = 2, max_length = 4, use_ling_filter = true, model = "en_core_web_sm", auto_download_model = false }
+```
+
+Notes:
+- use `termlint -v` or `termlint -vv` for more verbose logs
+- keep `auto_download_model = false` in CI or reproducible environments
+- glossary sources are JSON arrays of entities with required fields `id` and `label`
+
+Minimal valid glossary:
 
 ```json
 [
@@ -168,120 +119,25 @@ Minimal valid example:
 ]
 ```
 
-Extended example:
-
-```json
-[
-  {
-    "id": "ml:001",
-    "label": "machine learning",
-    "synonyms": ["ML"],
-    "relations": {
-      "related_to": ["ml:002"]
-    },
-    "definition": "Field focused on learning patterns from data.",
-    "source": "internal-glossary"
-  }
-]
-```
-
-Common validation/runtime errors:
-- File not found: `Glossary file not found: <path>`
-- Invalid JSON syntax: `Invalid JSON in <path>: ...`
-- Invalid entity shape/type: `Failed to initialize glossary source '<path>': ...`
-
-## Glossary Tooling
-
-Create glossary from `ontology_update` report:
-
-```bash
-termlint glossary from-report \
-  --report reports/ontology_update.json \
-  --out glossary.generated.json \
-  --min-score 0.7 \
-  --min-frequency 1 \
-  --namespace auto
-```
-
-Merge generated glossary into an existing glossary:
-
-```bash
-termlint glossary merge \
-  --base glossary.json \
-  --updates glossary.generated.json \
-  --out glossary.merged.json \
-  --on-match merge-synonyms \
-  --on-conflict report \
-  --conflicts-out merge.conflicts.json \
-  --summary-out merge.summary.json
-```
-
-## Development
-
-```bash
-poetry config virtualenvs.in-project true --local
-poetry env use python3.13
-poetry install --with dev --extras "base"
-```
-
-## Logging
-
-`termlint` follows common linter-style verbosity controls:
-
-```bash
-termlint -v verify <file>        # INFO logs
-termlint -vv verify <file>       # DEBUG logs
-termlint -q verify <file>        # ERROR only
-termlint --log-level DEBUG verify <file>
-termlint --log-file reports/termlint.log verify <file>
-termlint --config ./pyproject.toml verify <file> --source ./glossary.json
-```
-
-You can also set defaults in `pyproject.toml`:
-
-```toml
-[tool.termlint.logging]
-level = "WARNING"
-log_file = "reports/termlint.log"
-fmt = "%(asctime)s [%(name)s] %(levelname)-8s %(message)s"
-datefmt = "%Y-%m-%d %H:%M:%S"
-max_bytes = 10485760
-backup_count = 5
-```
-
-spaCy model download is disabled by default during lint runs. Configure extraction like:
-
-```toml
-[tool.termlint.extraction]
-extractors = ["rule", "cvalue"]
-rules = { model = "en_core_web_sm", auto_download_model = false }
-cvalue = { threshold = 0.25, min_freq = 1, min_length = 2, max_length = 4, use_ling_filter = true, model = "en_core_web_sm", auto_model_download = false }
-```
-
-Set `auto_download_model = true` for rules and `auto_model_download = true` for cvalue only if you explicitly want runtime model download (not recommended for CI).
-
-## Config Discovery
-
 Config lookup order:
 
 1. `--config <PATH>`
-2. nearest `pyproject.toml` (searching upward from current directory), section `[tool.termlint]`
-3. user-level config:
-   - `$XDG_CONFIG_HOME/termlint/config.toml` (if set)
+2. nearest `pyproject.toml` with `[tool.termlint]`
+3. user config:
+   - `$XDG_CONFIG_HOME/termlint/config.toml`
    - `~/.config/termlint/config.toml`
-   - `%APPDATA%/termlint/config.toml` (Windows)
+   - `%APPDATA%/termlint/config.toml`
    - `~/.termlint/config.toml`
 4. built-in defaults
 
-User-level config may use either:
-- `[tool.termlint]` (same as project config)
-- `[termlint]` (short form for standalone user config files)
+User config files may use either `[tool.termlint]` or `[termlint]`.
 
-## Exit Codes
+## More Docs
 
-`termlint` uses a stable exit code contract:
+- Usage examples: [samples/USAGE.md](samples/USAGE.md)
+- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Release history: [CHANGELOG.md](CHANGELOG.md)
 
-- `0`: successful run
-- `1`: quality gate failed (`verify --fail-on-quality-gate`)
-- `2`: usage/configuration error (invalid options/config/source)
-- `3`: internal pipeline/runtime error
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).

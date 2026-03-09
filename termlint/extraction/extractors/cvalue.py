@@ -67,7 +67,7 @@ class CValueExtractor(BaseExtractor):
         max_length: Maximum candidate length in tokens.
         use_ling_filter: Enable spaCy-based candidate generation.
         model: spaCy model name to load when linguistic filtering is enabled.
-        auto_download: Download the spaCy model if it is missing.
+        auto_download_model: Download the spaCy model if it is missing.
 
     Notes:
         spaCy mode is preferred because it uses POS-aware candidate generation.
@@ -83,7 +83,7 @@ class CValueExtractor(BaseExtractor):
         max_length: int = DEFAULT_MAX_LENGTH,
         use_ling_filter: bool = DEFAULT_USE_LING_FILTER,
         model: str = DEFAULT_MODEL,
-        auto_download: bool = DEFAULT_AUTO_MODEL_DOWNLOAD,
+        auto_download_model: bool = DEFAULT_AUTO_MODEL_DOWNLOAD,
     ):
         super().__init__()
         self.threshold = threshold
@@ -91,7 +91,7 @@ class CValueExtractor(BaseExtractor):
         self.min_length = min_length
         self.max_length = max_length
         self.model = model
-        self.auto_download = auto_download
+        self.auto_download = auto_download_model
 
         self.scorer = CValueScorer(min_freq=min_freq)
 
@@ -190,7 +190,7 @@ async def run_demo(
         max_length=max_length,
         use_ling_filter=use_ling_filter,
         model=model,
-        auto_download=False,
+        auto_download_model=False,
     )
 
     print(f"C-VALUE MODE: {mode.upper()}")

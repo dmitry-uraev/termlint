@@ -412,7 +412,7 @@ output_dir = "reports/"
 [tool.termlint.extraction]
 extractors = ["rule", "cvalue"]
 rules.model = "ru_core_news_sm"
-cvalue = { threshold = 0.25, min_freq = 1, min_length = 2, max_length = 4, use_ling_filter = true, model = "ru_core_news_sm", auto_model_download = false }
+cvalue = { threshold = 0.25, min_freq = 1, min_length = 2, max_length = 4, use_ling_filter = true, model = "ru_core_news_sm", auto_download_model = false }
 
 [tool.termlint.verifier]
 source = "domain_terms.json"

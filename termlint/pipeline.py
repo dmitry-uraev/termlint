@@ -62,8 +62,8 @@ class UnifiedPipeline:
                                 config.extraction.cvalue.get("use_ling_filter", DEFAULT_USE_LING_FILTER)
                             )
                             model = str(config.extraction.cvalue.get("model", DEFAULT_MODEL))
-                            auto_model_download = bool(
-                                config.extraction.cvalue.get("auto_model_download", DEFAULT_AUTO_MODEL_DOWNLOAD)
+                            auto_download_model = bool(
+                                config.extraction.cvalue.get("auto_download_model", DEFAULT_AUTO_MODEL_DOWNLOAD)
                             )
                             pipeline.with_cvalue(
                                 threshold=threshold,
@@ -72,7 +72,7 @@ class UnifiedPipeline:
                                 max_length=max_length,
                                 use_ling_filter=use_ling_filter,
                                 model=model,
-                                auto_model_download=auto_model_download,
+                                auto_download_model=auto_download_model,
                             )
                 case "normalize":
                     pipeline.normalize()
@@ -120,7 +120,7 @@ class UnifiedPipeline:
         max_length: int = DEFAULT_MAX_LENGTH,
         use_ling_filter: bool = DEFAULT_USE_LING_FILTER,
         model: str = DEFAULT_MODEL,
-        auto_model_download: bool = DEFAULT_AUTO_MODEL_DOWNLOAD,
+        auto_download_model: bool = DEFAULT_AUTO_MODEL_DOWNLOAD,
     ) -> 'UnifiedPipeline':
         """C-Value extraction."""
         from termlint.extraction.extractors.cvalue import CValueExtractor
@@ -133,7 +133,7 @@ class UnifiedPipeline:
                 max_length=max_length,
                 use_ling_filter=use_ling_filter,
                 model=model,
-                auto_download=auto_model_download,
+                auto_download_model=auto_download_model,
             )
         )
         return self

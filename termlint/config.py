@@ -51,7 +51,7 @@ class ExtractionConfig(BaseModel):
             "max_length": DEFAULT_MAX_LENGTH,
             "use_ling_filter": DEFAULT_USE_LING_FILTER,
             "model": DEFAULT_MODEL,
-            "auto_model_download": DEFAULT_AUTO_MODEL_DOWNLOAD,
+            "auto_download_model": DEFAULT_AUTO_MODEL_DOWNLOAD,
         }
     )
 

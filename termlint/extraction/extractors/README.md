@@ -78,7 +78,7 @@ The extractor prefers spaCy mode by default.
 If spaCy is not installed or the configured model cannot be loaded:
 
 - heuristic mode is used automatically
-- optional model auto-download can be enabled with `auto_download=True`
+- optional model auto-download can be enabled with `auto_download_model=True`
 
 ### C-Value scoring
 
