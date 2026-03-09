@@ -1,0 +1,49 @@
+PEP 2
+Title: Procedure for Adding New Modules
+Author: Brett Cannon <brett@python.org>, Martijn Faassen <faassen@infrae.com>
+Status: Active
+Type: Process
+Created: 07-Jul-2001
+Post-History: 07-Jul-2001, 09-Mar-2002
+
+Introduction
+
+The Python Standard Library contributes significantly to Python's success.
+The language comes with "batteries included", so it is easy for people to
+become productive with just the standard library alone. It is therefore
+important that the usefulness of the standard library be maintained.
+
+Because of the visibility and importance of the standard library, it must be
+maintained thoughtfully. Any code added to it must be maintained by Python's
+development team, which creates a long-term cost for each addition. There is
+also added cognitive load for users who need to understand what belongs in
+the standard library.
+
+New functionality is commonly added in the form of new modules. This document
+describes the procedure for adding new modules. PEP 4 covers deprecation and
+removal of old and unused modules from the standard library.
+
+Acceptance Procedure
+
+For top-level modules or packages, a PEP is required. The procedure for
+writing a PEP is covered in PEP 1.
+
+For submodules of an existing package in the standard library, additions are
+at the discretion of the general Python development team and its members.
+
+General guidance about which modules are typically accepted into the standard
+library, and the overall process, is covered in the Python developer guide:
+https://devguide.python.org/stdlibchanges/
+
+Maintenance Procedure
+
+Anything accepted into the standard library is expected to be primarily
+maintained there, within Python's development infrastructure.
+
+Some members of the development team may choose to maintain a backport of a
+module outside of the standard library. In that case, they are responsible for
+keeping external code in sync as appropriate.
+
+Copyright
+
+This document has been placed in the public domain.

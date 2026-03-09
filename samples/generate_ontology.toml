@@ -1,0 +1,14 @@
+[tool.termlint.extraction]
+extractors = ["cvalue"]
+cvalue = { threshold = 1.0, min_freq = 1, min_length = 2, max_length = 3, use_ling_filter = true, model = "ru_core_news_sm", auto_model_download = true }
+
+[tool.termlint.verifier]
+type = "fuzzy"
+fuzzy = { threshold = 85, limit = 3, scorer = "token_sort_ratio" }
+
+[tool.termlint.reports]
+include = ["verification", "ontology_update", "quality_gate"]
+exporters = ["json"]
+
+[tool.termlint.pipeline]
+stages = ["extract", "normalize", "verify", "report"]

@@ -1,0 +1,162 @@
+{
+  "metadata": {
+    "report_type": "verification",
+    "timestamp": "2026-03-09T13:19:27.163513",
+    "termlint_version": "0.1.0a2"
+  },
+  "data": {
+    "report_type": "verification",
+    "total_items": 5,
+    "processed_items": 5,
+    "coverage_pct": 100.0,
+    "quality_score": 0.0,
+    "unknown_terms": [],
+    "matches": [
+      {
+        "text_entity": {
+          "text": "большие данные",
+          "original_text": "большие данные",
+          "lemma": "большие данные",
+          "span": [
+            47,
+            61
+          ],
+          "score": 1.0,
+          "pos_tags": [],
+          "sentence": "",
+          "frequency": 1,
+          "extractor_type": "cvalue_normalized",
+          "properties": {
+            "length": 2
+          }
+        },
+        "entity": {
+          "id": "ml:cc7b1d20c4",
+          "label": "большие данные",
+          "synonyms": [],
+          "relations": {},
+          "source": "termlint:ontology_update"
+        },
+        "confidence": 1.0,
+        "status": "NEAR_MATCH",
+        "matched_synonym": "большие данные"
+      },
+      {
+        "text_entity": {
+          "text": "глубокое обучение",
+          "original_text": "глубокое обучение",
+          "lemma": "глубокое обучение",
+          "span": [
+            98,
+            115
+          ],
+          "score": 1.0,
+          "pos_tags": [],
+          "sentence": "",
+          "frequency": 1,
+          "extractor_type": "cvalue_normalized",
+          "properties": {
+            "length": 2
+          }
+        },
+        "entity": {
+          "id": "ml:ba5d97c69d",
+          "label": "глубокое обучение",
+          "synonyms": [],
+          "relations": {},
+          "source": "termlint:ontology_update"
+        },
+        "confidence": 1.0,
+        "status": "NEAR_MATCH",
+        "matched_synonym": "глубокое обучение"
+      },
+      {
+        "text_entity": {
+          "text": "искусственный интеллект",
+          "original_text": "Искусственный интеллект",
+          "lemma": "искусственный интеллект",
+          "span": [
+            63,
+            86
+          ],
+          "score": 1.0,
+          "pos_tags": [],
+          "sentence": "",
+          "frequency": 1,
+          "extractor_type": "cvalue_normalized",
+          "properties": {
+            "length": 2
+          }
+        },
+        "entity": {
+          "id": "ml:d1e2ef0910",
+          "label": "искусственный интеллект",
+          "synonyms": [],
+          "relations": {},
+          "source": "termlint:ontology_update"
+        },
+        "confidence": 1.0,
+        "status": "NEAR_MATCH",
+        "matched_synonym": "искусственный интеллект"
+      },
+      {
+        "text_entity": {
+          "text": "машинного обучения",
+          "original_text": "машинного обучения",
+          "lemma": "машинного обучения",
+          "span": [
+            15,
+            33
+          ],
+          "score": 1.0,
+          "pos_tags": [],
+          "sentence": "",
+          "frequency": 1,
+          "extractor_type": "cvalue_normalized",
+          "properties": {
+            "length": 2
+          }
+        },
+        "entity": {
+          "id": "ml:daa31181fc",
+          "label": "машинного обучения",
+          "synonyms": [],
+          "relations": {},
+          "source": "termlint:ontology_update"
+        },
+        "confidence": 1.0,
+        "status": "NEAR_MATCH",
+        "matched_synonym": "машинного обучения"
+      },
+      {
+        "text_entity": {
+          "text": "нейронные сети",
+          "original_text": "Нейронные сети",
+          "lemma": "нейронные сети",
+          "span": [
+            0,
+            14
+          ],
+          "score": 1.0,
+          "pos_tags": [],
+          "sentence": "",
+          "frequency": 1,
+          "extractor_type": "cvalue_normalized",
+          "properties": {
+            "length": 2
+          }
+        },
+        "entity": {
+          "id": "ml:02a0087560",
+          "label": "нейронные сети",
+          "synonyms": [],
+          "relations": {},
+          "source": "termlint:ontology_update"
+        },
+        "confidence": 1.0,
+        "status": "NEAR_MATCH",
+        "matched_synonym": "нейронные сети"
+      }
+    ]
+  }
+}

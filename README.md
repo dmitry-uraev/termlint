@@ -32,15 +32,28 @@ Async functional pipeline with composable stages and universal TextEntity model.
 
 Implemented and supported now:
 - rule-based extraction (`RuleExtractor` / spaCy)
+- C-Value extraction module (`CValueExtractor`) with spaCy mode and heuristic fallback
 - verification: `exact`, `fuzzy`
 - report export: JSON (`extraction`, `verification`, `ontology_update`, `quality_gate`)
 - glossary tooling: `glossary from-report`, `glossary merge`
 
 Planned / not implemented yet:
-- extractors: `CValue`, `KeyBERT`
+- extractor integration in config/CLI: `KeyBERT`
 - processing stages: `filter`, `rank`
 - verification stages: `semantic`, `ensemble`
 - exporters: HTML, JUnit
+
+### Latest Branch Changes (Unreleased)
+
+- Added `CValueExtractor` implementation under `termlint/extraction/extractors/`:
+  - modular candidate generation (`spaCy` + heuristic fallback)
+  - standalone C-Value scorer module
+  - tokenizer/config/type support modules
+- Added dedicated C-Value test suite:
+  - extractor behavior tests
+  - candidate generator tests
+  - scorer math tests
+- Updated extraction stage internals to silence typing noise for async extractor iteration.
 
 ## Compatibility Matrix
 
@@ -126,8 +139,8 @@ Generated reports:
 - `reports/quality_gate.json`
 
 Exit behavior:
-- `verify` typically exits `0` on successful run (even if quality gate would fail in CI mode)
-- `ci` exits `1` when quality gates fail
+- `verify` exits `0` on successful run by default (even if quality gate would fail in CI mode)
+- `verify --fail-on-quality-gate` exits `1` when quality gates fail
 - full contract is listed in [Exit Codes](#exit-codes)
 
 ## Glossary JSON Schema
@@ -240,11 +253,12 @@ spaCy model download is disabled by default during lint runs. Configure extracti
 
 ```toml
 [tool.termlint.extraction]
-extractors = ["rule"]
+extractors = ["rule", "cvalue"]
 rules = { model = "en_core_web_sm", auto_download_model = false }
+cvalue = { threshold = 0.25, min_freq = 1, min_length = 2, max_length = 4, use_ling_filter = true, model = "en_core_web_sm", auto_model_download = false }
 ```
 
-Set `auto_download_model = true` only if you explicitly want runtime model download (not recommended for CI).
+Set `auto_download_model = true` for rules and `auto_model_download = true` for cvalue only if you explicitly want runtime model download (not recommended for CI).
 
 ## Config Discovery
 
@@ -268,6 +282,6 @@ User-level config may use either:
 `termlint` uses a stable exit code contract:
 
 - `0`: successful run
-- `1`: quality gate failed (`ci` command)
+- `1`: quality gate failed (`verify --fail-on-quality-gate`)
 - `2`: usage/configuration error (invalid options/config/source)
 - `3`: internal pipeline/runtime error

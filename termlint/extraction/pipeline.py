@@ -11,6 +11,7 @@ from termlint.extraction.stages.base import ExtractionStage
 from termlint.extraction.stages.normalize import NormalizationStage
 from termlint.extraction.stages.parallel import ParallelStage
 from termlint.extraction.extractors.base import BaseExtractor
+from termlint.extraction.extractors.cvalue import CValueExtractor
 from termlint.extraction.extractors.rule import RuleExtractor
 
 
@@ -35,9 +36,8 @@ class TextExtractionPipeline:
         return self
 
     def with_cvalue(self) -> 'TextExtractionPipeline':
-        """Add C-Value extractor (TODO)"""
-        # from .extractors.cvalue import cvalue_extractor
-        # self._extractors.append(cvalue_extractor)
+        """Add C-Value extractor"""
+        self._extractors.append(CValueExtractor())
         return self
 
     # ==================== STAGES ====================

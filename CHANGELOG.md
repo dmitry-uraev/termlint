@@ -7,6 +7,25 @@ The format is based on Keep a Changelog, and this project follows
 
 ## [Unreleased]
 
+### Added
+- New `CValueExtractor` implementation (`termlint/extraction/extractors/cvalue.py`) with:
+  - C-Value scoring over aggregated candidate frequencies
+  - dual candidate generation strategy (spaCy mode + heuristic fallback)
+  - modular support package: `candidate_generators`, `scorer`, `tokenizer`, `config`, `types`
+- Extractor documentation at `termlint/extraction/extractors/README.md`.
+- Dedicated C-Value tests:
+  - `tests/extraction/extractors/cvalue/test_cvalue_extractor.py`
+  - `tests/extraction/extractors/cvalue/test_cvalue_generators.py`
+  - `tests/extraction/extractors/cvalue/test_cvalue_scorer.py`
+
+### Changed
+- `ParallelStage` async extraction loop now includes an inline typing ignore for `_extract` iteration in `termlint/extraction/stages/parallel.py`.
+- User config discovery test updated to validate `%APPDATA%/termlint/config.toml` fallback behavior in `tests/test_config_discovery.py`.
+- Added `CValueExtractor` export in `termlint.extraction` module lazy imports.
+- Added extraction config section `cvalue` in `termlint/config.py` and enabled `cvalue` initialization in `UnifiedPipeline.from_config()`.
+- Default extraction config now enables both `rule` and `cvalue` extractors.
+- CValue defaults in `termlint/config.py` and pipeline wiring now reuse constants from `termlint/extraction/extractors/cvalue_support/config.py` as a single source of truth.
+
 ## [0.1.0a2] - 2026-03-06
 
 ### Added

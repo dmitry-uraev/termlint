@@ -21,9 +21,7 @@ Candidate generation is delegated to one of two strategies:
 
 from __future__ import annotations
 
-import math
-from collections import defaultdict
-from typing import AsyncIterator, Dict, List, Tuple
+from typing import AsyncIterator, List, Tuple
 
 try:
     import spacy
@@ -43,11 +41,13 @@ from termlint.extraction.extractors.cvalue_support.candidate_generators import (
     SpacyCandidateGenerator,
 )
 from termlint.extraction.extractors.cvalue_support.config import (
+    DEFAULT_AUTO_MODEL_DOWNLOAD,
     DEFAULT_MAX_LENGTH,
     DEFAULT_MIN_FREQ,
     DEFAULT_MIN_LENGTH,
     DEFAULT_MODEL,
     DEFAULT_THRESHOLD,
+    DEFAULT_USE_LING_FILTER,
 )
 from termlint.extraction.extractors.cvalue_support.tokenizer import tokenize_with_regex, tokenize_with_spacy
 from termlint.extraction.extractors.cvalue_support.types import TokenInfo
@@ -81,9 +81,9 @@ class CValueExtractor(BaseExtractor):
         min_freq: int = DEFAULT_MIN_FREQ,
         min_length: int = DEFAULT_MIN_LENGTH,
         max_length: int = DEFAULT_MAX_LENGTH,
-        use_ling_filter: bool = True,
+        use_ling_filter: bool = DEFAULT_USE_LING_FILTER,
         model: str = DEFAULT_MODEL,
-        auto_download: bool = False,
+        auto_download: bool = DEFAULT_AUTO_MODEL_DOWNLOAD,
     ):
         super().__init__()
         self.threshold = threshold
@@ -193,10 +193,8 @@ async def run_demo(
         auto_download=False,
     )
 
-    print(f"\n{'=' * 60}")
-    print(f"🎯 C-VALUE MODE: {mode.upper()}")
+    print(f"C-VALUE MODE: {mode.upper()}")
     print(f"model={extractor.model}, use_ling_filter={extractor.use_ling_filter}")
-    print(f"{'=' * 60}")
 
     found = False
     async for e in extractor._extract(text):
@@ -204,11 +202,10 @@ async def run_demo(
         print(f"  {e.text}: {e.score:.2f} (x{e.frequency})")
 
     if not found:
-        print("  Ничего не найдено.")
+        print("Nothing found.")
 
     if mode == "spacy" and not extractor.use_ling_filter:
-        print("\n⚠️ spaCy-режим не активировался.")
-        print(f"Проверь установку модели: {model}")
+        print("\nspaCy mode not activated, check model installed: {model}")
 
 
 async def demo() -> None:
@@ -222,11 +219,11 @@ async def demo() -> None:
     Artificial intelligence uses deep learning.
     """
 
-    print("\n########## RUSSIAN ##########")
+    print("\nRUSSIAN")
     await run_demo("heuristic", ru_text, model="ru_core_news_sm")
     await run_demo("spacy", ru_text, model="ru_core_news_sm")
 
-    print("\n########## ENGLISH ##########")
+    print("\nENGLISH")
     await run_demo("heuristic", en_text, model="en_core_web_sm")
     await run_demo("spacy", en_text, model="en_core_web_sm")
 

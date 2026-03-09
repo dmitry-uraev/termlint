@@ -100,6 +100,10 @@ def cli(
 @click.option('--verifier', type=click.Choice(["exact", "fuzzy"]), help="Verifier type")
 @click.option("--threshold", type=int, help="🎯 Fuzzy threshold")
 @click.option("--output-dir", type=click.Path(file_okay=False, path_type=Path), help="📁 Output directory")
+@click.option("--fail-on-quality-gate", is_flag=True, help="Exit with code 1 when quality gate fails (CI mode)")
+@click.option("--min-coverage", type=float, help="Override quality gate: minimum coverage percent")
+@click.option("--max-unknown", type=int, help="Override quality gate: maximum unknown terms")
+@click.option("--min-quality-score", type=float, help="Override quality gate: minimum quality score")
 @pass_config
 def verify(
     ctx,
@@ -107,7 +111,11 @@ def verify(
     source: Path,
     verifier: Optional[str],
     threshold: Optional[int],
-    output_dir: Optional[Path]
+    output_dir: Optional[Path],
+    fail_on_quality_gate: bool,
+    min_coverage: Optional[float],
+    max_unknown: Optional[int],
+    min_quality_score: Optional[float],
 ):
     """Full verification pipeline (default)"""
 
@@ -122,6 +130,12 @@ def verify(
             config.verifier.fuzzy["threshold"] = threshold
         if output_dir:
             config.output_dir = output_dir
+        if min_coverage is not None:
+            config.quality_gates.min_coverage = min_coverage
+        if max_unknown is not None:
+            config.quality_gates.max_unknown = max_unknown
+        if min_quality_score is not None:
+            config.quality_gates.min_quality_score = min_quality_score
 
         pipeline = await build_pipeline_or_exit(config)
         file_list = normalize_files(files)
@@ -172,6 +186,8 @@ def verify(
         quality = next((r for r in all_reports if r.report_type == ReportType.QUALITY_GATE), None)
         if quality and not quality.quality_pass:
             console.print(f"⚠️  [yellow]Quality Gate would FAIL in CI mode[/yellow]")
+            if fail_on_quality_gate:
+                raise click.exceptions.Exit(ExitCode.QUALITY_GATE_FAIL)
 
     asyncio.run(run_pipeline())
 
@@ -235,71 +251,6 @@ def extract(
                     console.print(f"✅ [green]Extracted {extraction_report.processed_items} terms → {config.output_dir / 'extraction.json'}[/green]")
 
     asyncio.run(run_pipeline())
-
-@cli.command()
-@click.argument("files", nargs=-1, type=click.Path(exists=True, path_type=Path), required=True)
-@click.option('--source', type=click.Path(exists=True, path_type=Path), required=True, help='📚 Glossary file')
-@pass_config
-def ci(
-    ctx,
-    files: Union[Path, tuple[Path, ...], List[Path]],
-    source: Path
-):
-    """CI/CD quality gates only"""
-
-    async def run_pipeline():
-        config = ctx['config']
-        config.verifier.source = Path(source)
-        config.reports.include = [ReportType.VERIFICATION, ReportType.QUALITY_GATE]
-
-        failed_files = []
-
-        pipeline = await build_pipeline_or_exit(config)
-        file_list = normalize_files(files)
-
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            TimeElapsedColumn(),
-            console=console
-        ) as progress:
-            overall_task = progress.add_task("[bold]Files[/bold]", total=len(file_list))
-            current_task = progress.add_task("Waiting...", total=1)
-            for file_path in file_list:
-                progress.update(current_task, description=f"🧪 {file_path.name}", total=1, completed=0)
-
-                def on_step(step: int, total: int, stage_name: str):
-                    progress.update(
-                        current_task,
-                        description=f"🧪 {file_path.name} • {stage_name}",
-                        total=total,
-                        completed=max(step - 1, 0),
-                    )
-
-                result = await run_pipeline_for_file_or_exit(
-                    pipeline,
-                    file_path,
-                    progress_callback=on_step
-                )
-                progress.update(current_task, completed=progress.tasks[current_task].total, description=f"✅ {file_path.name}")
-                progress.advance(overall_task, 1)
-                if not result.is_ok:
-                    console.print(f"[red]❌ Pipeline error[/red]: {result.errors}")
-                    raise click.exceptions.Exit(ExitCode.INTERNAL_PIPELINE_ERROR)
-
-                quality_report = next((r for r in result.value if isinstance(r, Report) and r.report_type == ReportType.QUALITY_GATE), None)
-                if quality_report and not quality_report.quality_pass:
-                    console.print(f"[red bold]❌ {file_path.name}: Quality gate failed ({quality_report.processed_items}/{quality_report.total_items})[/red bold]")
-                    failed_files.append(file_path)
-
-        if failed_files:
-            console.print(f"\n💥 [red bold]{len(failed_files)}/{len(file_list)} files failed quality gates[/red bold]")
-            raise click.exceptions.Exit(ExitCode.QUALITY_GATE_FAIL)
-
-    asyncio.run(run_pipeline())
-
 
 @cli.group()
 def glossary():

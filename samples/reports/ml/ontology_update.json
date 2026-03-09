@@ -1,0 +1,99 @@
+{
+  "metadata": {
+    "report_type": "ontology_update",
+    "timestamp": "2026-03-09T13:17:26.162541",
+    "termlint_version": "0.1.0a2"
+  },
+  "data": {
+    "report_type": "ontology_update",
+    "total_items": 5,
+    "processed_items": 5,
+    "suggested_entities": [
+      {
+        "text": "большие данные",
+        "original_text": "большие данные",
+        "lemma": "большие данные",
+        "span": [
+          47,
+          61
+        ],
+        "score": 1.0,
+        "pos_tags": [],
+        "sentence": "",
+        "frequency": 1,
+        "extractor_type": "cvalue_normalized",
+        "properties": {
+          "length": 2
+        }
+      },
+      {
+        "text": "глубокое обучение",
+        "original_text": "глубокое обучение",
+        "lemma": "глубокое обучение",
+        "span": [
+          98,
+          115
+        ],
+        "score": 1.0,
+        "pos_tags": [],
+        "sentence": "",
+        "frequency": 1,
+        "extractor_type": "cvalue_normalized",
+        "properties": {
+          "length": 2
+        }
+      },
+      {
+        "text": "искусственный интеллект",
+        "original_text": "Искусственный интеллект",
+        "lemma": "искусственный интеллект",
+        "span": [
+          63,
+          86
+        ],
+        "score": 1.0,
+        "pos_tags": [],
+        "sentence": "",
+        "frequency": 1,
+        "extractor_type": "cvalue_normalized",
+        "properties": {
+          "length": 2
+        }
+      },
+      {
+        "text": "машинного обучения",
+        "original_text": "машинного обучения",
+        "lemma": "машинного обучения",
+        "span": [
+          15,
+          33
+        ],
+        "score": 1.0,
+        "pos_tags": [],
+        "sentence": "",
+        "frequency": 1,
+        "extractor_type": "cvalue_normalized",
+        "properties": {
+          "length": 2
+        }
+      },
+      {
+        "text": "нейронные сети",
+        "original_text": "Нейронные сети",
+        "lemma": "нейронные сети",
+        "span": [
+          0,
+          14
+        ],
+        "score": 1.0,
+        "pos_tags": [],
+        "sentence": "",
+        "frequency": 1,
+        "extractor_type": "cvalue_normalized",
+        "properties": {
+          "length": 2
+        }
+      }
+    ]
+  }
+}

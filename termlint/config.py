@@ -10,6 +10,15 @@ except ModuleNotFoundError:  # Python < 3.11
 from pydantic import BaseModel, Field
 
 from termlint.core.models import QualityConfig
+from termlint.extraction.extractors.cvalue_support.config import (
+    DEFAULT_AUTO_MODEL_DOWNLOAD,
+    DEFAULT_MAX_LENGTH,
+    DEFAULT_MIN_FREQ,
+    DEFAULT_MIN_LENGTH,
+    DEFAULT_MODEL,
+    DEFAULT_THRESHOLD,
+    DEFAULT_USE_LING_FILTER,
+)
 
 
 class QualityGates(BaseModel):
@@ -27,11 +36,22 @@ class QualityGates(BaseModel):
 
 
 class ExtractionConfig(BaseModel):
-    extractors: List[str] = Field(default_factory=lambda: ["rule"])
+    extractors: List[str] = Field(default_factory=lambda: ["rule", "cvalue"])
     rules: Dict[str, Any] = Field(
         default_factory=lambda: {
             "model": "ru_core_news_sm",
             "auto_download_model": False,
+        }
+    )
+    cvalue: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            "threshold": DEFAULT_THRESHOLD,
+            "min_freq": DEFAULT_MIN_FREQ,
+            "min_length": DEFAULT_MIN_LENGTH,
+            "max_length": DEFAULT_MAX_LENGTH,
+            "use_ling_filter": DEFAULT_USE_LING_FILTER,
+            "model": DEFAULT_MODEL,
+            "auto_model_download": DEFAULT_AUTO_MODEL_DOWNLOAD,
         }
     )
 
