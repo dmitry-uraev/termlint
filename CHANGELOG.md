@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog, and this project follows
 [PEP 440](https://peps.python.org/pep-0440/) for Python package versions.
 
+## [0.1.0a4] - 2026-03-09
+
+### Fixed
+- Fixed the no-config CLI path so the README Quick Start works in isolated installs such as `pipx`, without requiring a local `pyproject.toml`.
+- Restored built-in default pipeline stages for `verify`: `extract`, `normalize`, `verify`, `report`.
+- Aligned built-in default extractor models with the English Quick Start examples (`en_core_web_sm` for rule and C-Value extraction).
+- Restored default report generation for `ontology_update` in the built-in config.
+
+### Tests
+- Added explicit CLI coverage for the Quick Start scenario: no config file, default settings, and `termlint verify input.txt --source glossary.json --verifier fuzzy --threshold 85`.
+
 ## [0.1.0a3] - 2026-03-09
 
 ### Added

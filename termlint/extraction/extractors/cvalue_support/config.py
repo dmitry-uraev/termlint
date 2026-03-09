@@ -1,6 +1,6 @@
 """Configuration and rule constants for the C-Value extractor."""
 
-DEFAULT_MODEL = "ru_core_news_sm"
+DEFAULT_MODEL = "en_core_web_sm"
 DEFAULT_THRESHOLD = 0.25
 DEFAULT_MIN_FREQ = 1
 DEFAULT_MIN_LENGTH = 2

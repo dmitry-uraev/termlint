@@ -68,6 +68,8 @@ Artificial intelligence and machine learning are used in data analytics.
 termlint verify input.txt --source glossary.json --verifier fuzzy --threshold 85
 ```
 
+This command works without any local `pyproject.toml`. In the no-config case, `termlint` uses built-in defaults for the full verification pipeline and English spaCy model settings.
+
 Example output:
 
 ```text
