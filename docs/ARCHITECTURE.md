@@ -1,6 +1,6 @@
 # termlint Architecture
 
-## Overview (Partly)
+## Overview (Done)
 
 `termlint` is a terminology linter for projects in different subject areas. It extracts term candidates from text, processes them through an asynchronous pipeline, and verifies them against a glossary or knowledge base.
 
@@ -45,7 +45,7 @@ Raw Text
 | TextEntityStream  | Async term iterator (provides extraction results)    | async for entity in stream, to_list(), from_list()      | core/types.py  | +      |
 | MatchResultStream | Async match iterator (provides verification results) | async for match in stream, to_list(), from_list()       | core/types.py  | +      |
 
-## Common Layers Principles (Partly)
+## Common Layers Principles (Done)
 
 ### Result Monad Contract (Done)
 
@@ -87,7 +87,7 @@ if result.is_ok:
     report = result.value  # List[Report] + files created
 ```
 
-### Stage Implementation Strategy (Partly)
+### Stage Implementation Strategy (Done)
 
 core/stages.py
 
@@ -187,6 +187,13 @@ Text ───┐
 extraction/
 ├── extractors/        # str → AsyncIterator[TextEntity]
 │   ├── base.py        # BaseExtractor + ConfigurableExtractor
+│   ├── cvalue.py      # CValueExtractor (C-Value orchestration)
+│   ├── cvalue_support/
+│       ├── candidate_generators.py
+│       ├── scorer.py
+│       ├── tokenizer.py
+│       ├── config.py
+│       └── types.py
 │   └── rule.py        # RuleExtractor (spaCy)
 ├── stages/            # Stream → Result[Stream]
 │   ├── parallel.py    # ParallelStage (asyncio.gather)
@@ -202,7 +209,7 @@ extraction/
 | BaseExtractor          | extractors/ | str → AsyncIterator[TextEntity]             | Abstract                                                             | +      |
 | ConfigurableExtractor  | extractors/ | str → AsyncIterator[TextEntity]             | ``**config`` passed to init                                          | +      |
 | RuleExtractor          | extractors/ | str → AsyncIterator[TextEntity]             | spaCy patterns, POS tags (Matcher + model autoloading)               | +      |
-| CValueExtractor        | extractors/ | str → AsyncIterator[TextEntity]             | TODO                                                                 | TODO   |
+| CValueExtractor        | extractors/ | str → AsyncIterator[TextEntity]             | C-Value scoring + spaCy/heuristic candidate generation fallback      | +      |
 | KeyBERTExtractor       | extractors/ | str → AsyncIterator[TextEntity]             | TODO                                                                 | TODO   |
 | ParallelStage          | stages/     | str → Result[TextEntityStream]              | Parallel extractor composition, ``asyncio.gather(*extractor(text))`` | +      |
 | ExtractionStage        | stages/     | TextEntityStream → Result[TextEntityStream] | Abstract, Chain of responsibility                                    | +      |
@@ -213,11 +220,11 @@ extraction/
 
 ### Extractors (Partly)
 
-| Extractor        | Algorithm                    | Dependencies          | Status |
-| ---------------- | ---------------------------- | --------------------- | ------ |
-| RuleExtractor    | spaCy patterns, POS-tags     | spacy                 | +      |
-| CValueExtractor  | Statistical C-Value/NC-Value | None                  | TODO   |
-| KeyBERTExtractor | Transformer embeddings       | sentence-transformers | TODO   |
+| Extractor        | Algorithm                                                                                                         | Dependencies          | Status |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------- | ------ |
+| RuleExtractor    | spaCy patterns, POS-tags                                                                                          | spacy                 | +      |
+| CValueExtractor  | Statistical C-Value scoring, [Implementatin details](../termlint/extraction/extractors/README.md#cvalueextractor) | optional: spacy       | +      |
+| KeyBERTExtractor | Transformer embeddings                                                                                            | sentence-transformers | TODO   |
 
 Ideas for keywords extraction:
 
@@ -330,9 +337,7 @@ reporter/
 | ReportConfig  | core/models.py     | Fluent params -> ReportStage           | include=[ReportType], exporters=[], quality_gates={}, output_dir     | +      |
 | QualityConfig | core/models.py     | Fluent params -> ReportStage           | min_coverage, max_unknown, max_quality_score                         | +      |
 
-### Report types to usage scenarios (Partly)
-
-> TODO: Need parameters clarification, hard-coded constants removing, and usage description
+### Report types to usage scenarios (Done)
 
 | ReportType      | Input Stream      | Key Metrics                             | Usage Scenario |
 | --------------- | ----------------- | --------------------------------------- | -------------- |
@@ -374,13 +379,13 @@ glossary/
 
 ### Components (Done)
 
-| Component                             | Location              | Input -> Output                            | Contract                                           | Status         |
-| ------------------------------------- | --------------------- | ------------------------------------------ | -------------------------------------------------- | -------------- |
-| `convert_candidates_to_entities`      | glossary/converter.py | `List[TextEntity] -> List[Entity]`         | canonical dedupe by lemma/text + deterministic IDs | +              |
-| `merge_entities`                      | glossary/merge.py     | `base + updates -> merged/conflicts`       | policy-based merge (`skip                          | merge-synonyms | replace`) + conflicts | + |
-| `load_suggested_entities_from_report` | glossary/io.py        | ontology_update JSON -> `List[TextEntity]` | validates `data.suggested_entities` shape          | +              |
-| `load_entities_from_glossary`         | glossary/io.py        | glossary JSON -> `List[Entity]`            | validates glossary entity shape                    | +              |
-| `write_entities_to_glossary`          | glossary/io.py        | `List[Entity] -> glossary.json`            | deterministic JSON serialization                   | +              |
+| Component                             | Location              | Input -> Output                            | Contract                                                             | Status |
+| ------------------------------------- | --------------------- | ------------------------------------------ | -------------------------------------------------------------------- | ------ |
+| `convert_candidates_to_entities`      | glossary/converter.py | `List[TextEntity] -> List[Entity]`         | canonical dedupe by lemma/text + deterministic IDs                   | +      |
+| `merge_entities`                      | glossary/merge.py     | `base + updates -> merged/conflicts`       | policy-based merge (`skip \| merge-synonyms \| replace`) + conflicts | +      |
+| `load_suggested_entities_from_report` | glossary/io.py        | ontology_update JSON -> `List[TextEntity]` | validates `data.suggested_entities` shape                            | +      |
+| `load_entities_from_glossary`         | glossary/io.py        | glossary JSON -> `List[Entity]`            | validates glossary entity shape                                      | +      |
+| `write_entities_to_glossary`          | glossary/io.py        | `List[Entity] -> glossary.json`            | deterministic JSON serialization                                     | +      |
 
 ### Generated Reports / Artifacts (Done)
 
@@ -405,8 +410,9 @@ Notes:
 output_dir = "reports/"
 
 [tool.termlint.extraction]
-extractors = ["rule"]
+extractors = ["rule", "cvalue"]
 rules.model = "ru_core_news_sm"
+cvalue = { threshold = 0.25, min_freq = 1, min_length = 2, max_length = 4, use_ling_filter = true, model = "ru_core_news_sm", auto_download_model = false }
 
 [tool.termlint.verifier]
 source = "domain_terms.json"
@@ -461,7 +467,7 @@ termlint verify README.md --source glossary.json --verifier fuzzy --threshold 85
 termlint extract docs/
 
 # CI/CD quality gates
-termlint ci README.md --source glossary.json
+termlint verify README.md --source glossary.json --fail-on-quality-gate
 
 # Glossary bootstrap from ontology update report
 termlint glossary from-report --report reports/ontology_update.json --out glossary.generated.json
@@ -474,15 +480,15 @@ termlint validate
 
 > Layer concept
 
-| Command              | Scenario | Output                                       | Exit codes |
-| -------------------- | -------- | -------------------------------------------- | ---------- |
-| verify               | 1, 4     | Reports + files                              | 0, 2, 3    |
-| extract              | 2, 3     | EXTRACTION report                            | 0, 2, 3    |
-| ci                   | 5        | QUALITY_GATE only                            | 0, 1, 2, 3 |
-| glossary from-report | 4        | `glossary_generated.json`                    | 0, 2, 3    |
-| glossary merge       | 4, 5     | merged glossary + optional conflicts/summary | 0, 2, 3    |
-| config               | -        | Effective config (JSON)                      | 0, 2       |
-| validate             | -        | Config validation                            | 0, 2       |
+| Command                       | Scenario | Output                                       | Exit codes |
+| ----------------------------- | -------- | -------------------------------------------- | ---------- |
+| verify                        | 1, 4     | Reports + files                              | 0, 2, 3    |
+| extract                       | 2, 3     | EXTRACTION report                            | 0, 2, 3    |
+| verify --fail-on-quality-gate | 5        | QUALITY_GATE (strict exit on fail)           | 0, 1, 2, 3 |
+| glossary from-report          | 4        | `glossary_generated.json`                    | 0, 2, 3    |
+| glossary merge                | 4, 5     | merged glossary + optional conflicts/summary | 0, 2, 3    |
+| config                        | -        | Effective config (JSON)                      | 0, 2       |
+| validate                      | -        | Config validation                            | 0, 2       |
 
 ### Exit codes (Done)
 
@@ -490,7 +496,7 @@ Stable CLI contract:
 
 ```text
 0  -> PASS / successful execution
-1  -> QUALITY_GATE_FAIL (ci command)
+1  -> QUALITY_GATE_FAIL (verify --fail-on-quality-gate)
 2  -> USAGE_OR_CONFIG_ERROR (invalid options/config/source/input files)
 3  -> INTERNAL_PIPELINE_ERROR (unexpected runtime errors)
 ```

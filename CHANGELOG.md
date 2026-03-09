@@ -7,6 +7,13 @@ The format is based on Keep a Changelog, and this project follows
 
 ## [Unreleased]
 
+### Added
+- New configurable `CValueExtractor` for term extraction.
+
+### Changed
+- Added `cvalue` extraction configuration with parameters for threshold, frequency, candidate length, linguistic filtering, spaCy model selection, and model auto-download behavior.
+- Default extraction config now enables both `rule` and `cvalue` extractors.
+
 ## [0.1.0a2] - 2026-03-06
 
 ### Added

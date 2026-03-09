@@ -38,17 +38,23 @@ def test_discovery_falls_back_to_user_config(tmp_path: Path, monkeypatch):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
 
-    fake_home = tmp_path / "home"
-    user_cfg = fake_home / ".termlint" / "config.toml"
+    # Match TermlintConfig.user_config_candidates():
+    # 1) XDG_CONFIG_HOME/termlint/config.toml
+    # 2) Path.home()/.config/termlint/config.toml
+    # 3) APPDATA/termlint/config.toml
+    # 4) Path.home()/.termlint/config.toml
+    #
+    # The most stable one to control cross-platform is APPDATA.
+    appdata = tmp_path / "appdata"
+    user_cfg = appdata / "termlint" / "config.toml"
     user_cfg.parent.mkdir(parents=True)
     user_cfg.write_text(
         "[termlint.logging]\nlevel = \"ERROR\"\n",
         encoding="utf-8",
     )
 
-    monkeypatch.setenv("HOME", str(fake_home))
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
-    monkeypatch.delenv("APPDATA", raising=False)
+    monkeypatch.setenv("APPDATA", str(appdata))
 
     config = TermlintConfig.from_discovery(start_dir=workspace)
     assert config.logging.level == "ERROR"

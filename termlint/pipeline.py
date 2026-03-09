@@ -7,6 +7,15 @@ from termlint.config import TermlintConfig, VerifierConfig
 from termlint.core.models import MatchResult, QualityConfig, Report, ReportConfig, ReportType, TextEntity
 from termlint.core.stages import ProcessingStage
 from termlint.core.types import MatchResultStream, Result, TextEntityStream
+from termlint.extraction.extractors.cvalue_support.config import (
+    DEFAULT_AUTO_MODEL_DOWNLOAD,
+    DEFAULT_MAX_LENGTH,
+    DEFAULT_MIN_FREQ,
+    DEFAULT_MIN_LENGTH,
+    DEFAULT_MODEL,
+    DEFAULT_THRESHOLD,
+    DEFAULT_USE_LING_FILTER,
+)
 
 from termlint.extraction import NormalizationStage, ParallelStage, BaseExtractor
 from termlint.verifier import FuzzyVerificationStage, VerifierFactory
@@ -44,6 +53,27 @@ class UnifiedPipeline:
                             model = config.extraction.rules.get("model", "ru_core_news_sm")
                             auto_download_model = bool(config.extraction.rules.get("auto_download_model", False))
                             pipeline.with_rules(model=model, auto_download_model=auto_download_model)
+                        if name == "cvalue":
+                            threshold = float(config.extraction.cvalue.get("threshold", DEFAULT_THRESHOLD))
+                            min_freq = int(config.extraction.cvalue.get("min_freq", DEFAULT_MIN_FREQ))
+                            min_length = int(config.extraction.cvalue.get("min_length", DEFAULT_MIN_LENGTH))
+                            max_length = int(config.extraction.cvalue.get("max_length", DEFAULT_MAX_LENGTH))
+                            use_ling_filter = bool(
+                                config.extraction.cvalue.get("use_ling_filter", DEFAULT_USE_LING_FILTER)
+                            )
+                            model = str(config.extraction.cvalue.get("model", DEFAULT_MODEL))
+                            auto_download_model = bool(
+                                config.extraction.cvalue.get("auto_download_model", DEFAULT_AUTO_MODEL_DOWNLOAD)
+                            )
+                            pipeline.with_cvalue(
+                                threshold=threshold,
+                                min_freq=min_freq,
+                                min_length=min_length,
+                                max_length=max_length,
+                                use_ling_filter=use_ling_filter,
+                                model=model,
+                                auto_download_model=auto_download_model,
+                            )
                 case "normalize":
                     pipeline.normalize()
                 case "verify":
@@ -53,7 +83,8 @@ class UnifiedPipeline:
                 case "report":
                     report_config = ReportConfig(
                         include=[getattr(ReportType, t.upper()) for t in config.reports.include],
-                        exporters=config.reports.exporters
+                        exporters=config.reports.exporters,
+                        output_dir=config.output_dir,
                     )
                     quality_config = config.quality_gates.to_quality_config()
                     pipeline.report(report_config, quality_config)
@@ -78,6 +109,32 @@ class UnifiedPipeline:
 
         self._extractors.append(
             RuleExtractor(model=model, auto_download_model=auto_download_model)
+        )
+        return self
+
+    def with_cvalue(
+        self,
+        threshold: float = DEFAULT_THRESHOLD,
+        min_freq: int = DEFAULT_MIN_FREQ,
+        min_length: int = DEFAULT_MIN_LENGTH,
+        max_length: int = DEFAULT_MAX_LENGTH,
+        use_ling_filter: bool = DEFAULT_USE_LING_FILTER,
+        model: str = DEFAULT_MODEL,
+        auto_download_model: bool = DEFAULT_AUTO_MODEL_DOWNLOAD,
+    ) -> 'UnifiedPipeline':
+        """C-Value extraction."""
+        from termlint.extraction.extractors.cvalue import CValueExtractor
+
+        self._extractors.append(
+            CValueExtractor(
+                threshold=threshold,
+                min_freq=min_freq,
+                min_length=min_length,
+                max_length=max_length,
+                use_ling_filter=use_ling_filter,
+                model=model,
+                auto_download_model=auto_download_model,
+            )
         )
         return self
 

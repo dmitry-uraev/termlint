@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "report_type": "quality_gate",
+    "timestamp": "2026-03-09T13:19:27.164256",
+    "termlint_version": "0.1.0a2"
+  },
+  "data": {
+    "report_type": "quality_gate",
+    "total_items": 5,
+    "processed_items": 5,
+    "quality_pass": true,
+    "exit_code": 0,
+    "raw_data": {
+      "source_reports": [
+        "verification"
+      ]
+    }
+  }
+}
