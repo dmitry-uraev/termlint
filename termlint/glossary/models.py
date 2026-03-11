@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List
 
+from termlint.core.models import Entity
+
 
 class MatchPolicy(str, Enum):
     SKIP = "skip"
@@ -59,6 +61,6 @@ class MergeSummary:
 
 @dataclass(frozen=True)
 class MergeResult:
-    merged: List[dict]
+    merged: List[Entity]
     conflicts: List[MergeConflict]
     summary: MergeSummary

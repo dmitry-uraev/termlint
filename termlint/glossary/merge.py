@@ -1,7 +1,7 @@
 """Glossary merge logic."""
 
 from dataclasses import replace
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from termlint.core.models import Entity
 from termlint.glossary.models import (
@@ -9,6 +9,7 @@ from termlint.glossary.models import (
     MatchPolicy,
     MergeConflict,
     MergePolicy,
+    MergeResult,
     MergeSummary,
 )
 from termlint.glossary.utils import canonical_term
@@ -18,7 +19,7 @@ def merge_entities(
     base: List[Entity],
     updates: List[Entity],
     policy: MergePolicy,
-) -> Tuple[List[Entity], List[MergeConflict], MergeSummary]:
+) -> MergeResult:
     """Merge update entities into base glossary with conflict policies."""
     merged: List[Entity] = list(base)
     conflicts: List[MergeConflict] = []
@@ -117,7 +118,11 @@ def merge_entities(
         skipped=skipped,
         conflicts=len(conflicts),
     )
-    return merged, conflicts, summary
+    return MergeResult(
+        merged=merged,
+        conflicts=conflicts,
+        summary=summary
+    )
 
 
 def _apply_match_policy(

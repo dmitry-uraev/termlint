@@ -1,4 +1,4 @@
-"""I/O helpers for glossary and report artifacts."""
+"""DEPRECATED: I/O helpers for glossary and report artifacts."""
 
 import json
 from pathlib import Path

@@ -1,12 +1,18 @@
+from termlint.core.models import Entity
+from termlint.core.stages import ProcessingStage
 from termlint.core.types import EntityStream, Result
-from termlint.merging.converters.text_to_entity import TextToEntityConverter
-from termlint.merging.stages.base import MergingStage
+from termlint.glossary.models import MergePolicy, MergeResult
 
 
-class GlossaryMergeStage(MergingStage):
-    """
-    Should take TextEntityStream and return new EntityStream
-    """
+class GlossaryMergeStage(ProcessingStage[EntityStream, MergeResult]):
 
-    async def merge(self, converter: TextToEntityConverter) -> Result[EntityStream]:
+    def __init__(
+        self,
+        base_entities: list[Entity],
+        policy: MergePolicy,
+    ) -> None:
+        self.base_entities = base_entities
+        self.policy = policy
+
+    async def process(self, stream: EntityStream) -> Result[MergeResult]:
         ...

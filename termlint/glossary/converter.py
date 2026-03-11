@@ -1,4 +1,4 @@
-"""Convert ontology update report candidates to glossary entities."""
+"""DEPRECATED: Convert ontology update report candidates to glossary entities."""
 
 from typing import Dict, List
 
