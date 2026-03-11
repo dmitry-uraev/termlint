@@ -1,4 +1,6 @@
-
+"""
+Entity selection protocols
+"""
 
 from typing import Protocol
 
