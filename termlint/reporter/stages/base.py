@@ -2,7 +2,7 @@ import asyncio
 import pprint
 from typing import Dict, List, Optional, Union
 
-from termlint.core.models import MatchResult, MatchStatus, QualityConfig, Report, ReportConfig, ReportType, TextEntity
+from termlint.core.models import Entity, MatchResult, MatchStatus, QualityConfig, Report, ReportConfig, ReportType, TextEntity
 from termlint.core.stages import ProcessingStage
 from termlint.core.types import Result, TextEntityStream, MatchResultStream
 
@@ -169,6 +169,11 @@ class ReportStage(ProcessingStage[Union[TextEntityStream, MatchResultStream], Li
             raw_data={"source_reports": [r.report_type.value for r in reports]}
         )
 
+    # Merge reports ----------------------------------------------------------
+
+    def _generate_ontology_merge_reports(self, entities: List[Entity]) -> List[Report]:
+        """Generate ONTOLOGY_MERGE report"""
+        ...
 
     # Helpers ----------------------------------------------------------------
 

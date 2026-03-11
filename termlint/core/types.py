@@ -5,7 +5,7 @@ Core types and utilities for termlint
 from typing import (AsyncIterator, Awaitable, Callable, Generic, List, TypeVar,
                     Union)
 
-from termlint.core.models import MatchResult, TextEntity
+from termlint.core.models import Entity, MatchResult, TextEntity
 
 T = TypeVar('T')
 U = TypeVar('U')
@@ -126,4 +126,34 @@ class MatchResultStream(AsyncIterator[MatchResult]):
         cls, generator_func: Callable[[], AsyncIterator[MatchResult]]
     ) -> 'MatchResultStream':
         """Create from an async iterable of MatchResult objects"""
+        return cls(generator_func())
+
+
+class EntityStream(AsyncIterator[Entity]):
+    """Async iterator over entities"""
+
+    def __init__(self, source: AsyncIterator[Entity]) -> None:
+        self._source = source
+
+    async def __anext__(self) -> Entity:
+        return await anext(self._source)
+
+    async def to_list(self) -> Result[List[Entity]]:
+        """Collect all Entity objects from the stream into a list"""
+        try:
+            return Result.ok([e async for e in self])
+        except Exception as e:
+            return Result.err([f"Error collecting EntityStream to list: {str(e)}"])
+
+    @classmethod
+    def from_list(cls, entities: List[Entity]) -> 'EntityStream':
+        """Create an EntityStream from a list of Entity objects"""
+        async def _source():
+            for e in entities:
+                yield e
+        return cls(_source())
+
+    @classmethod
+    def from_generator(cls, generator_func: Callable[[], AsyncIterator[Entity]]) -> 'EntityStream':
+        """Create from an async iterable of Entity objects"""
         return cls(generator_func())

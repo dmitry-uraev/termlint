@@ -1,4 +1,4 @@
-"""Glossary generation and merge utilities."""
+"""DEPRECATED: Glossary generation and merge utilities."""
 
 from termlint.glossary.converter import convert_candidates_to_entities
 from termlint.glossary.io import (

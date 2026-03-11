@@ -113,6 +113,8 @@ class ReportType(str, Enum):
     ONTOLOGY_UPDATE = "ontology_update"    # suggestions for ontology
     QUALITY_GATE = "quality_gate"          # CI/CD quality gate results (pass/fail)
 
+    ONTOLOGY_MERGE = "ontology_merge"      # merged ontology
+
 
 @dataclass
 class Report:
@@ -132,6 +134,7 @@ class Report:
     matches: Optional[List[MatchResult]] = None
     quality_pass: Optional[bool] = None
     exit_code: Optional[int] = None
+    entities: Optional[List[Entity]] = None  # this one is intended for ONTOLOGY_MERGE report
 
     # additional
     quality_score: Optional[float] = None
