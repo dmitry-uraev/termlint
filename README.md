@@ -76,7 +76,7 @@ Example output:
 Files     ... 100%
 ✅ input.txt ... 100%
 📊 Coverage: 33.3% (2/6)
-⚠️  Quality Gate would FAIL in CI mode
+⚠️ Quality Gate would FAIL in CI mode
 ```
 
 Generated reports:
